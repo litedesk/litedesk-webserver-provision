@@ -11,7 +11,7 @@
 
 # How to get the code running on your local machine
 
- 0. Clone this repo. This is will be $PROJECT_ROOT.
+ 0. Clone this repo. This will be $PROJECT_ROOT.
  1. Create virtualenv: I usually just use "`virtualenv .`" in the
  $PROJECT_ROOT folder. The folders created by the virtualenv are already on
  .gitignore, so there is no problem.
