@@ -1,0 +1,14 @@
+Hi {{ user.first_name }},
+
+your organization is using Okta to manage your web applications. This means you can conveniently access all the applications you normally use, through a single, secure home page. Watch this short video to learn more: https://www.okta.com/intro-to-okta/
+
+Your sytem administrator has created an Okta user account for you. Click the following link to activate your Okta account. This link expires in 7 days.
+
+{{ activation_url }}
+
+Your username is: {{ user.tenant_email }}
+Your organization's sign-in page is: {{ service.portal_url }}
+
+If you experience difficulties accessing your account, you can send a help request to your system administrator using this link: {{ service.portal_help_url }}
+
+This is an automatically generated message by Crosseven. Replies are not monitored or answered.

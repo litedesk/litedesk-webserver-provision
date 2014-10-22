@@ -1,0 +1,17 @@
+syntax: glob
+*.pyc
+*.pyo
+*.mo
+*.db
+local_settings.py
+
+/etc/*.conf
+/etc/*.ini
+/bin
+/include
+/lib
+/local
+/log
+/static
+/tmp
+/venv

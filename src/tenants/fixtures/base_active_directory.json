@@ -1,0 +1,223 @@
+[
+{
+  "fields": {
+    "domain": "directory",
+    "name": "Acme, Ltd",
+    "created": "2014-10-02T20:35:44.544",
+    "modified": "2014-10-02T20:35:44.548",
+    "primary_contact": 2,
+    "members": [],
+    "active": true,
+    "ou": "company1"
+  },
+  "model": "tenants.tenant",
+  "pk": 1
+},
+{
+  "fields": {
+    "url": "directory.zeile12.de",
+    "username": "Administrator",
+    "domain": "directory",
+    "password": "eyKML5ds",
+    "tenant": 1
+  },
+  "model": "tenants.activedirectory",
+  "pk": 1
+},
+{
+  "fields": {
+    "username": "matthias.testmann@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Matthias",
+    "last_name": "Matthias Testmann",
+    "created": "2014-10-02T20:37:02.697",
+    "modified": "2014-10-02T20:37:02.698",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 1
+},
+{
+  "fields": {
+    "username": "claudia.kressin@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Claudia",
+    "last_name": "Claudia Kressin",
+    "created": "2014-10-02T20:37:02.702",
+    "modified": "2014-10-02T20:37:02.702",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 2
+},
+{
+  "fields": {
+    "username": "christina.cressin@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Christina",
+    "last_name": "Christina Cressin",
+    "created": "2014-10-02T20:37:02.704",
+    "modified": "2014-10-02T20:37:02.705",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 3
+},
+{
+  "fields": {
+    "username": "dietmar.dunno@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Dietmar",
+    "last_name": "Dietmar Dunno",
+    "created": "2014-10-02T20:37:02.706",
+    "modified": "2014-10-02T20:37:02.707",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 4
+},
+{
+  "fields": {
+    "username": "emil.ergun@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Emil",
+    "last_name": "Emil Ergun",
+    "created": "2014-10-02T20:37:02.708",
+    "modified": "2014-10-02T20:37:02.709",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 5
+},
+{
+  "fields": {
+    "username": "felix.franz@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Felix",
+    "last_name": "Felix Franz",
+    "created": "2014-10-02T20:37:02.710",
+    "modified": "2014-10-02T20:37:02.711",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 6
+},
+{
+  "fields": {
+    "username": "tobias.hellmann",
+    "status": "pending",
+    "first_name": "Tobias",
+    "last_name": "Tobias Hellmann",
+    "created": "2014-10-02T20:37:02.714",
+    "modified": "2014-10-02T20:37:02.715",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 7
+},
+{
+  "fields": {
+    "username": "max.mustermann",
+    "status": "pending",
+    "first_name": "Max",
+    "last_name": "Max Mustermann",
+    "created": "2014-10-02T20:37:02.718",
+    "modified": "2014-10-02T20:37:02.718",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 8
+},
+{
+  "fields": {
+    "username": "philipp.offermann",
+    "status": "pending",
+    "first_name": "Philipp",
+    "last_name": "Philipp Offemann",
+    "created": "2014-10-02T20:37:02.721",
+    "modified": "2014-10-02T20:37:02.721",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 9
+},
+{
+  "fields": {
+    "username": "guy.moller",
+    "status": "pending",
+    "first_name": "GuyOffice",
+    "last_name": "GuyOffice Moller",
+    "created": "2014-10-02T20:37:02.723",
+    "modified": "2014-10-02T20:37:02.723",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 10
+},
+{
+  "fields": {
+    "username": "jack.johnson3@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Jack",
+    "last_name": "Jack Johnson",
+    "created": "2014-10-02T20:37:02.725",
+    "modified": "2014-10-02T20:37:02.726",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 11
+},
+{
+  "fields": {
+    "username": "zara.zeus@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Zara",
+    "last_name": "Zara Zeus",
+    "created": "2014-10-02T20:37:02.727",
+    "modified": "2014-10-02T20:37:02.728",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 12
+},
+{
+  "fields": {
+    "username": "john.smith@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "John",
+    "last_name": "John Smith",
+    "created": "2014-10-02T20:37:02.730",
+    "modified": "2014-10-02T20:37:02.731",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 13
+},
+{
+  "fields": {
+    "username": "marten.schoenherr@directory.zeile12.de",
+    "status": "pending",
+    "first_name": "Marten",
+    "last_name": "Marten Sch\u00f6nherr",
+    "created": "2014-10-02T20:37:02.733",
+    "modified": "2014-10-02T20:37:02.734",
+    "email": null,
+    "tenant": 1
+  },
+  "model": "tenants.user",
+  "pk": 14
+}
+]
