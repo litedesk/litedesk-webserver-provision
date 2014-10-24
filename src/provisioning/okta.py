@@ -19,11 +19,45 @@ import json
 import requests
 
 
+ERROR_RESPONSES = {
+    'ALREADY_ACTIVATED': {
+        'summary': 'Activation failed because the user is already active',
+        'code': 'E0000016'
+        }
+    }
+
+
+def check_for_error(response, key, exception):
+    try:
+        response.raise_for_status()
+    except requests.HTTPError, exc:
+        if check_is_known_error_response(response, 'ALREADY_ACTIVATED'):
+            raise exception
+        else:
+            raise exc
+
+
+def check_is_known_error_response(response, key):
+    try:
+        known_error_response = ERROR_RESPONSES[key]
+        error_response = response.json()
+        return all([
+            known_error_response['code'] == error_response.get('errorCode'),
+            known_error_response['summary'] == error_response.get('errorSummary')
+            ])
+    except KeyError:
+        return False
+
+
 class ResourceDoesNotExistError(Exception):
     pass
 
 
 class UserAlreadyExistsError(Exception):
+    pass
+
+
+class UserAlreadyActivatedError(Exception):
     pass
 
 
@@ -127,11 +161,14 @@ class Client(object):
                 raise e
 
     def activate_user(self, user, send_email=True):
+        if getattr(user, 'activated', False):
+            raise UserAlreadyActivatedError
+
         params = {
             'sendEmail': send_email
             }
 
         url = 'users/%s/lifecycle/activate' % user.id
         response = self._make_request(url, method='POST', params=params)
-        response.raise_for_status()
+        check_for_error(response, 'ALREADY_ACTIVATED', UserAlreadyActivatedError)
         return response.json()

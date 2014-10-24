@@ -16,6 +16,9 @@
 # limitations under the License.
 
 
-class TrackableModelAdminMixin(object):
-    def save_model(self, request, obj, form, change):
-        obj.save(editor=request.user)
+from django.dispatch import Signal
+
+
+trackable_model_changed = Signal(
+    providing_args=['editor', 'created', 'instance', 'original']
+    )

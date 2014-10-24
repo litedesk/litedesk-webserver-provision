@@ -17,11 +17,14 @@
 
 
 from django.db import models
+from django.db import transaction
 from django.contrib.auth.models import User as UserAccount
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from model_utils.models import TimeStampedModel
 from picklefield.fields import PickledObjectField
+
+from signals import trackable_model_changed
 
 
 class UntrackableChangeError(Exception):
@@ -33,7 +36,7 @@ class AuditLogEntry(TimeStampedModel):
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     item = GenericForeignKey('content_type', 'object_id')
-    data = PickledObjectField()
+    data = PickledObjectField(null=True)
 
 
 class Trackable(TimeStampedModel):
@@ -45,18 +48,25 @@ class Trackable(TimeStampedModel):
         return {attr: getattr(self, attr) for attr in self.TRACKABLE_ATTRIBUTES}
 
     def save(self, editor=None, *args, **kw):
-        if self.pk is not None and editor is None:
+        if editor is None:
             raise UntrackableChangeError('No account defined as author of update')
 
-        if self.pk is not None:
-            original = self.__class__.objects.get(id=self.id)
+        original = None if self.pk is None else self.__class__.objects.get(id=self.id)
+        with transaction.atomic():
+            super(Trackable, self).save(*args, **kw)
             AuditLogEntry.objects.create(
                 edited_by=editor,
                 content_type=ContentType.objects.get_for_model(self),
                 object_id=self.id,
-                data=original._trackable_attributes
-            )
-        super(Trackable, self).save(*args, **kw)
+                data=original and original._trackable_attributes
+                )
+        trackable_model_changed.send(
+            sender=self.__class__,
+            editor=editor,
+            created=original is None,
+            instance=self,
+            original=original
+        )
 
     class Meta:
         abstract = True

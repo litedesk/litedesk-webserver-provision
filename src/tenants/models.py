@@ -32,7 +32,7 @@ from model_utils.managers import InheritanceManager, QueryManager
 
 from cross7.lib.active_directory.connection import Connection
 from cross7.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
-from audit.models import Trackable, AuditLogEntry, UntrackableChangeError
+from audit.models import Trackable
 from syncremote.models import Synchronizable
 
 
@@ -270,19 +270,6 @@ class UserProvisionable(Trackable, TimeFramedModel):
     @property
     def provisioned(self):
         return self.start is not None and self.end is None
-
-    def save(self, editor=None, *args, **kw):
-        if editor is None:
-            raise UntrackableChangeError('No user responsible for provision change')
-
-        with transaction.atomic():
-            models.Model.save(self, *args, **kw)
-            AuditLogEntry.objects.create(
-                edited_by=editor,
-                content_type=ContentType.objects.get_for_model(self),
-                object_id=self.id,
-                data=self._trackable_attributes
-            )
 
     class Meta:
         abstract = True

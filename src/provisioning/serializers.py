@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright 2014, Deutsche Telekom AG - Laboratories (T-Labs)
 #
@@ -183,7 +183,7 @@ class UserProvisionSerializer(serializers.ModelSerializer):
                 user=self.object,
                 **{related_field_name: item}
                 )
-            related_item.save(editor=editor, force_insert=True)
+            related_item.save(editor=editor)
 
     def save_object(self, obj, **kw):
         self._update_m2m('platforms', models.UserPlatform, 'platform')
@@ -203,6 +203,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
     software = serializers.SerializerMethodField('get_user_software')
     simcards = serializers.SerializerMethodField('get_user_mobile_data_plans')
     platforms = serializers.SerializerMethodField('get_user_platforms')
+    display_name = serializers.CharField(source='get_display_name')
 
     def _serialize_asset(self, key, value):
         return {

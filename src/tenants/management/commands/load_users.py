@@ -44,7 +44,8 @@ class Command(BaseCommand):
                             defaults={
                                 'first_name':user.given_name,
                                 'last_name': user.sn,
-                                'email': user.mail
+                                'email': user.mail,
+                                'display_name': user.display_name
                             })
                         if not created:
                             user.sync()

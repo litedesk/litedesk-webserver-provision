@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright 2014, Deutsche Telekom AG - Laboratories (T-Labs)
 #
@@ -19,12 +19,12 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.db import models
-from django.db.models import signals
 from autoslug import AutoSlugField
 from jsonfield import JSONField
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeStampedModel
 
+from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User, UserProvisionable
 
 import okta
@@ -106,36 +106,43 @@ class Okta(TenantService):
             pass
         return self.get_service_user(user)
 
-    def activate(self, user):
+    def activate(self, user, editor=None):
         client = self.get_client()
         try:
             service_user = self.get_service_user(user)
         except okta.ResourceDoesNotExistError:
             service_user = self.register(user)
 
-        activation_response = client.activate_user(service_user, send_email=False)
-        template_parameters = {
-            'user': user,
-            'service': self,
-            'activation_url': activation_response.get('activationUrl')
+        try:
+            activation_response = client.activate_user(service_user, send_email=False)
+            template_parameters = {
+                'user': user,
+                'service': self,
+                'activation_url': activation_response.get('activationUrl')
             }
-        text_message = render_to_string('mail/text/activation.tmpl.txt', template_parameters)
-        html_message = render_to_string('mail/html/activation.tmpl.html', template_parameters)
+            text_msg = render_to_string('mail/text/activation.tmpl.txt', template_parameters)
+            html_msg = render_to_string('mail/html/activation.tmpl.html', template_parameters)
 
-        send_mail(
-            settings.SITE.get('ACTIVATION_EMAIL_SUBJECT'),
-            text_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            html_message=html_message
+            send_mail(
+                settings.SITE.get('ACTIVATION_EMAIL_SUBJECT'),
+                text_msg,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                html_message=html_msg
             )
+        except okta.UserAlreadyActivatedError:
+            pass
+        finally:
+            user.status = user.STATUS.active
+            user.save(editor=editor)
 
     def assign(self, asset, user):
+        print 'assigning asset %s to %s' % (asset, user)
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         client = self.get_client()
         service_user = self.get_service_user(user)
         service_application = client.get(okta.Application, metadata.get('application_id'))
-        service_application.assign_to_user(service_user, profile=metadata.get('profile'))
+        service_application.assign(service_user, profile=metadata.get('profile'))
 
     @classmethod
     def get_serializer_data(cls, **data):
@@ -224,25 +231,46 @@ class UserPlatform(UserProvisionable):
 
     @staticmethod
     def on_user_provision(*args, **kw):
-        if kw.get('created'):
-            user = kw.get('instance').user
-            for service in user.tenant.tenantservice_set.select_subclasses():
-                service.activate(user)
+        instance = kw.get('instance')
+        user = instance.user
+        editor = kw.get('editor')
+        for service in user.tenant.tenantservice_set.select_subclasses():
+            service.activate(user, editor=editor)
+
+    class Meta:
+        unique_together = ('user', 'platform')
 
 
 class UserDevice(UserProvisionable):
     TRACKABLE_ATTRIBUTES = ['user', 'device', 'start', 'end']
     device = models.ForeignKey(Device)
 
+    class Meta:
+        unique_together = ('user', 'device')
+
 
 class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = ['user', 'software', 'start', 'end']
     software = models.ForeignKey(Software)
 
+    @staticmethod
+    def on_user_provision(*args, **kw):
+        instance = kw.get('instance')
+        user = instance.user
+        software = instance.software
+        for service in user.platforms.all():
+            service.assign(software, user)
+
+    class Meta:
+        unique_together = ('user', 'software')
+
 
 class UserMobileDataPlan(UserProvisionable):
     TRACKABLE_ATTRIBUTES = ['user', 'mobile_data_plan', 'start', 'end']
     mobile_data_plan = models.ForeignKey(MobileDataPlan)
+
+    class Meta:
+        unique_together = ('user', 'mobile_data_plan')
 
 
 User.add_to_class('platforms', models.ManyToManyField(TenantService, through=UserPlatform))
@@ -253,8 +281,13 @@ User.add_to_class(
     )
 
 
-signals.post_save.connect(
+trackable_model_changed.connect(
     UserPlatform.on_user_provision, dispatch_uid='user_platform_provision', sender=UserPlatform
+    )
+
+
+trackable_model_changed.connect(
+    UserSoftware.on_user_provision, dispatch_uid='user_software_provision', sender=UserSoftware
     )
 
 
