@@ -30,6 +30,7 @@ from tenants.models import Tenant, TenantService, User, UserProvisionable
 import okta
 import airwatch
 
+
 class PropertyTable(models.Model):
     metadata = JSONField(null=True)
 
