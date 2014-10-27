@@ -203,7 +203,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
     software = serializers.SerializerMethodField('get_user_software')
     simcards = serializers.SerializerMethodField('get_user_mobile_data_plans')
     platforms = serializers.SerializerMethodField('get_user_platforms')
-    display_name = serializers.CharField(source='get_display_name')
+    display_name = serializers.CharField()
 
     def _serialize_asset(self, key, value):
         return {
