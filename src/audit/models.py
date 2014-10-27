@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 
 from django.db import models
 from django.db import transaction
@@ -39,9 +40,36 @@ class AuditLogEntry(TimeStampedModel):
     data = PickledObjectField(null=True)
 
 
+class TrackableManager(models.Manager):
+    def get_or_create(self, *args, **kw):
+        return super(TrackableManager, self).get_or_create(*args, **kw)
+
+    def update_or_create(self, defaults=None, **kw):
+        ''' Copied from django's update_or_create, but saving with editor parameters'''
+        editor = kw.pop('editor', None)
+        qs = self.get_queryset()
+        defaults = defaults or {}
+        lookup, params = qs._extract_model_params(defaults, **kw)
+        qs._for_write = True
+        try:
+            obj = qs.get(**lookup)
+        except qs.model.DoesNotExist:
+            obj, created = qs._create_object_from_params(lookup, params)
+            if created:
+                return obj, created
+        for k, v in six.iteritems(defaults):
+            setattr(obj, k, v)
+
+        with transaction.atomic(using=qs.db):
+            obj.save(using=qs.db, editor=editor)
+        return obj, False
+
+
 class Trackable(TimeStampedModel):
     TRACKABLE_ATTRIBUTES = []
     changelog = GenericRelation(AuditLogEntry)
+
+    objects = TrackableManager()
 
     @property
     def _trackable_attributes(self):
