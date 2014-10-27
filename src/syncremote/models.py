@@ -6,12 +6,13 @@ from django.db import models
 
 
 class Synchronizable(models.Model):
+    SYNCHRONIZABLE_ATTRIBUTES_MAP = {}
+
     last_synced_at = models.DateTimeField(null=True, editable=False)
     last_modified = models.DateTimeField(auto_now=True, editable=False)
 
     @property
     def synced(self):
-
         if self.last_modified is None or self.last_synced_at is None:
             return False
 
@@ -33,6 +34,9 @@ class Synchronizable(models.Model):
         if self.last_synced_at is None: return True
 
         return self.last_modified < self.last_synced_at
+
+    def get_remote(self):
+        raise NotImplementedError
 
     def sync(self, force_push=False, force_pull=False):
         def _push():
