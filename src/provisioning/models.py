@@ -258,7 +258,7 @@ class UserSoftware(UserProvisionable):
         instance = kw.get('instance')
         user = instance.user
         software = instance.software
-        for service in user.platforms.all():
+        for service in user.platforms.select_subclasses():
             service.assign(software, user)
 
     class Meta:
