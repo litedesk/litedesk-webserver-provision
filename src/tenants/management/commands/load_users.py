@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright 2014, Deutsche Telekom AG - Laboratories (T-Labs)
 #
@@ -17,6 +17,7 @@
 
 
 from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
 
 from cross7.lib.active_directory.connection import Connection
 from cross7.lib.active_directory.classes.base import Company
@@ -28,7 +29,8 @@ class Command(BaseCommand):
     help = 'For all tenants with AD credentials, load the user table'
 
     def handle(self, *fixture_labels, **options):
-
+        user_class = get_user_model()
+        admin = user_class.objects.filter(is_superuser=True)[0]
         for ad in models.ActiveDirectory.objects.all():
             url = 'ldap://%s' % ad.url
             dn = ['DC=%s' % component for component in ad.url.split('.')]
@@ -38,14 +40,9 @@ class Command(BaseCommand):
             with Connection(url, dn, ad.password) as connection:
                 for company in Company.search(connection, query='(ou=%s)' % ad.ou):
                     for user in company.users:
-                        user, created = models.User.objects.get_or_create(
-                            tenant=ad.tenant,
-                            username=user.s_am_account_name,
-                            defaults={
-                                'first_name':user.given_name,
-                                'last_name': user.sn,
-                                'email': user.mail,
-                                'display_name': user.display_name
-                            })
-                        if not created:
-                            user.sync()
+                        username = user.s_am_account_name
+                        local_user = models.User.objects.filter(username=username)
+                        if local_user.exists():
+                            local_user.get().merge(user, editor=admin)
+                        else:
+                            models.User.load(user, editor=admin, tenant=ad.tenant)

@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import importlib
+import datetime
 
 from django.conf import settings
 from django.db import models
@@ -32,7 +33,7 @@ from model_utils.managers import InheritanceManager, QueryManager
 
 from cross7.lib.active_directory.connection import Connection
 from cross7.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
-from audit.models import Trackable
+from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
 
 
@@ -82,10 +83,20 @@ class ActiveDirectory(models.Model):
     def make_connection(self):
         return Connection(self.full_url, self.dn, self.password)
 
-    def find_company(self, connection):
+    def find_company(self):
         try:
-            query_results = Company.search(connection, query='(ou=%s)' % self.ou)
-            return query_results[0]
+            with self.make_connection() as connection:
+                query_results = Company.search(connection, query='(ou=%s)' % self.ou)
+                return query_results[0]
+        except IndexError:
+            return None
+
+    def find_user(self, username):
+        try:
+            with self.make_connection() as connection:
+                query_results = Company.search(connection, query='(ou=%s)' % self.ou)
+                company = query_results[0]
+                return [u for u in company.users if u.s_am_account_name == username].pop()
         except IndexError:
             return None
 
@@ -211,7 +222,15 @@ class TenantService(models.Model):
 
 class User(Trackable, Synchronizable):
     TRACKABLE_ATTRIBUTES = ['first_name', 'last_name', 'status']
+    SYNCHRONIZABLE_ATTRIBUTES_MAP = {
+            'username': 's_am_account_name',
+            'first_name': 'given_name',
+            'last_name': 'sn',
+            'email': 'mail',
+            'display_name': 'display_name'
+        }
     STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
+
 
     tenant = models.ForeignKey(Tenant)
     first_name = models.CharField(max_length=100, null=True)
@@ -226,19 +245,43 @@ class User(Trackable, Synchronizable):
     def tenant_email(self):
         return '%s@%s' % (self.username, self.tenant.email_domain)
 
+    def merge(self, remote_object, **extra_fields):
+        if self.last_modified > self.__class__.get_remote_last_modified(remote_object): return
+        for local_attr, remote_attr in self.__class__.SYNCHRONIZABLE_ATTRIBUTES_MAP.items():
+
+            remote_value = getattr(remote_object, remote_attr)
+            setattr(self, local_attr, remote_value)
+
+        self.last_synced_at = datetime.datetime.now()
+        self.save(**extra_fields)
+
+    def get_remote(self):
+        return self.tenant.active_directory.find_user(self.username)
+
     def push(self):
-        with self.tenant.get_active_directory_connection() as connection:
-            user = ActiveDirectoryUser(
-                connection,
-                parent=self.tenant.active_directory.find_company(connection),
-                given_name=self.first_name,
-                sn=self.last_name,
-                s_am_account_name=self.username,
-                mail=self.email,
-                display_name=self.display_name or self.get_default_display_name(),
-                user_principal_name=self.tenant_email
-                )
-            user.save()
+        remote_user = self.get_remote()
+        if remote_user is None:
+            with self.tenant.get_active_directory_connection() as connection:
+                remote_user = ActiveDirectoryUser(
+                    connection,
+                    parent=self.tenant.active_directory.find_company(),
+                    given_name=self.first_name,
+                    sn=self.last_name,
+                    s_am_account_name=self.username,
+                    mail=self.email,
+                    display_name=self.display_name or self.get_default_display_name(),
+                    user_principal_name=self.tenant_email
+                    )
+        # FIXME: actually pushing users that already exist on the server is not working
+
+        # else:
+        #     with remote_user._conn as connection:
+        #         remote_user.mail = self.email
+        #         remote_user.display_name = self.display_name
+        #         remote_user.user_principal_name = self.tenant_email
+        #         remote_user.given_name = self.first_name
+        #         remote_user.sn = self.last_name
+        #         remote_user.save()
 
     def pull(self):
         pass
@@ -253,6 +296,38 @@ class User(Trackable, Synchronizable):
 
     def __unicode__(self):
         return self.username
+
+    @classmethod
+    def load(cls, remote_object, **kw):
+        editor = kw.pop('editor', None)
+
+        if editor is None:
+            raise UntrackableChangeError('Can not load new data without tracking editor')
+
+        try:
+            editor_tenant = editor.tenant
+        except:
+            editor_tenant = None
+
+        tenant = kw.pop('tenant', editor_tenant)
+        if tenant is None:
+            raise ValueError('User %s has no tenant' % remote_object)
+
+        obj = cls(
+            username=remote_object.s_am_account_name,
+            tenant=tenant,
+            first_name=remote_object.given_name,
+            last_name=remote_object.sn,
+            email=remote_object.mail,
+            display_name=remote_object.display_name
+            )
+
+        obj.last_synced_at = datetime.datetime.now()
+        obj.save(editor=editor)
+
+    @classmethod
+    def get_remote_last_modified(cls, remote_object):
+        return datetime.datetime.strptime(remote_object.when_changed, '%Y%m%d%H%M%S.%fZ')
 
     class Meta:
         unique_together = ('tenant', 'username')
