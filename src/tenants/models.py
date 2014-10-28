@@ -31,8 +31,8 @@ from model_utils.fields import StatusField
 from model_utils.models import TimeStampedModel, TimeFramedModel
 from model_utils.managers import InheritanceManager, QueryManager
 
-from cross7.lib.active_directory.connection import Connection
-from cross7.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
+from litedesk.lib.active_directory.connection import Connection
+from litedesk.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
 from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
 

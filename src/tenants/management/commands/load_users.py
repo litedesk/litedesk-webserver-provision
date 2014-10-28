@@ -19,8 +19,8 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
-from cross7.lib.active_directory.connection import Connection
-from cross7.lib.active_directory.classes.base import Company
+from litedesk.lib.active_directory.connection import Connection
+from litedesk.lib.active_directory.classes.base import Company
 
 from tenants import models
 

@@ -50,8 +50,8 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'cross7_service_api.urls'
-WSGI_APPLICATION = 'cross7_service_api.wsgi.application'
+ROOT_URLCONF = 'litedesk_service_api.urls'
+WSGI_APPLICATION = 'litedesk_service_api.wsgi.application'
 
 
 # Internationalization

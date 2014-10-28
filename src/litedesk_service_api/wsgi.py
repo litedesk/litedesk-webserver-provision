@@ -2,7 +2,7 @@
 
 
 import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cross7.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'litedesk.settings')
 
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()

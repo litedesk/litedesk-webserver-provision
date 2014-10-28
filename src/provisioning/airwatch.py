@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cross7.lib.airwatch.user import User
+from litedesk.lib.airwatch.user import User
 
 
 class Client(object):
