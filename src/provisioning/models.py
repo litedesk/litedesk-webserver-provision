@@ -234,8 +234,7 @@ class UserPlatform(UserProvisionable):
         instance = kw.get('instance')
         user = instance.user
         editor = kw.get('editor')
-        import pdb; pdb.set_trace()
-        for service in user.platforms.all():
+        for service in user.platforms.select_subclasses():
             service.activate(user, editor=editor)
 
     class Meta:

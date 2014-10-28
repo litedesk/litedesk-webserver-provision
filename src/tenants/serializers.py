@@ -24,11 +24,14 @@ import models
 
 class NewUserSerializer(serializers.ModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='user-detail')
+    username = serializers.CharField()
 
     def save_object(self, user, *args, **kw):
         request = self.context.get('request')
-        user.tenant = request.user.tenant
-        return super(NewUserSerializer, self).save_object(user, *args, **kw)
+        editor = request.user
+        user.tenant = editor.tenant
+        user.save(editor=editor)
+        return user
 
     def validate(self, attrs, *args, **kw):
         request = self.context.get('request')
@@ -75,18 +78,6 @@ class UserSerializer(serializers.ModelSerializer):
         editor = request.user
 
         user.save(editor=editor)
-
-        # # Need to compare with current status to find which platforms are being added/removed.
-        # current_platforms = [p[0] for p in user.assigned_platforms.values_list('platform')]
-        # selected_platforms = user._related_data.get('platforms')
-
-        # to_add = [p for p in selected_platforms if p not in current_platforms]
-        # to_remove = [p for p in current_platforms if p not in selected_platforms]
-
-        # for platform in to_add:
-        #     user.assign_platform(platform, editor=editor)
-        # for platform in to_remove:
-        #     user.revoke_platform(platform, editor=editor)
 
         return user
 

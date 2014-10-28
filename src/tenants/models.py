@@ -271,16 +271,14 @@ class User(Trackable, Synchronizable):
                     display_name=self.display_name or self.get_default_display_name(),
                     user_principal_name=self.tenant_email
                     )
-        # FIXME: actually pushing users that already exist on the server is not working
-
-        # else:
-        #     with remote_user._conn as connection:
-        #         remote_user.mail = self.email
-        #         remote_user.display_name = self.display_name
-        #         remote_user.user_principal_name = self.tenant_email
-        #         remote_user.given_name = self.first_name
-        #         remote_user.sn = self.last_name
-        #         remote_user.save()
+        else:
+            with self.tenant.get_active_directory_connection() as connection:
+                remote_user.mail = self.email
+                remote_user.display_name = self.display_name
+                remote_user.user_principal_name = self.tenant_email
+                remote_user.given_name = self.first_name
+                remote_user.sn = self.last_name
+                remote_user.save()
 
     def pull(self):
         pass
@@ -334,10 +332,10 @@ class User(Trackable, Synchronizable):
 
 class UserProvisionable(Trackable, TimeFramedModel):
     TRACKABLE_ATTRIBUTES = ['user', 'start', 'end']
-    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')    
+    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
 
     user = models.ForeignKey(User)
-    status = StatusField()    
+    status = StatusField()
 
     @property
     def tenant(self):
