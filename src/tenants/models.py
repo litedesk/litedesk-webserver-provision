@@ -221,7 +221,7 @@ class TenantService(models.Model):
 
 
 class User(Trackable, Synchronizable):
-    TRACKABLE_ATTRIBUTES = ['first_name', 'last_name', 'status']
+    TRACKABLE_ATTRIBUTES = ['first_name', 'last_name', 'status', 'email']
     SYNCHRONIZABLE_ATTRIBUTES_MAP = {
             'username': 's_am_account_name',
             'first_name': 'given_name',
@@ -231,13 +231,12 @@ class User(Trackable, Synchronizable):
         }
     STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
 
-
     tenant = models.ForeignKey(Tenant)
     first_name = models.CharField(max_length=100, null=True)
     last_name = models.CharField(max_length=100, null=True)
     display_name = models.CharField(max_length=200, null=True)
     mobile_phone_number = models.CharField(max_length=16, null=True, blank=True)
-    username = models.CharField(max_length=100)
+    username = models.CharField(max_length=100, editable=False)
     email = models.EmailField(null=True)
     status = StatusField()
 
@@ -335,8 +334,10 @@ class User(Trackable, Synchronizable):
 
 class UserProvisionable(Trackable, TimeFramedModel):
     TRACKABLE_ATTRIBUTES = ['user', 'start', 'end']
+    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')    
 
     user = models.ForeignKey(User)
+    status = StatusField()    
 
     @property
     def tenant(self):
