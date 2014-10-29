@@ -16,4 +16,4 @@ python-memcached
 python-money
 
 git+ssh://git@github.com/litedesk/litedesk-lib-active_directory
-git+ssh://git@github.com/litedesk/litedesk-lib-airwatch
+git+ssh://git@bitbucket.org/litedesk/litedesk-lib-airwatch
