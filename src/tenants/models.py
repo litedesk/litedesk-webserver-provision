@@ -21,6 +21,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 from django.db import transaction
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
@@ -31,7 +32,7 @@ from model_utils.fields import StatusField
 from model_utils.models import TimeStampedModel, TimeFramedModel
 from model_utils.managers import InheritanceManager, QueryManager
 
-from litedesk.lib.active_directory.connection import Connection
+from litedesk.lib.active_directory.session import Session
 from litedesk.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
 from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
@@ -80,23 +81,23 @@ class ActiveDirectory(models.Model):
         params.insert(0, 'cn=%s' % self.username)
         return ','.join(params)
 
-    def make_connection(self):
-        return Connection(self.full_url, self.dn, self.password)
+    def make_session(self):
+        return Session(self.full_url, self.dn, self.password)
 
     def find_company(self):
+        session = self.make_session()
         try:
-            with self.make_connection() as connection:
-                query_results = Company.search(connection, query='(ou=%s)' % self.ou)
-                return query_results[0]
+            query_results = Company.search(session, query='(ou=%s)' % self.ou)
+            return query_results[0]
         except IndexError:
             return None
 
     def find_user(self, username):
         try:
-            with self.make_connection() as connection:
-                query_results = Company.search(connection, query='(ou=%s)' % self.ou)
-                company = query_results[0]
-                return [u for u in company.users if u.s_am_account_name == username].pop()
+            session = self.make_session()
+            query_results = Company.search(session, query='(ou=%s)' % self.ou)
+            company = query_results[0]
+            return [u for u in company.users if u.s_am_account_name == username].pop()
         except IndexError:
             return None
 
@@ -114,8 +115,8 @@ class Tenant(TimeStampedModel):
     #
     email_domain = models.CharField(max_length=300, default='onmicrosoft.com')
 
-    def get_active_directory_connection(self):
-        return self.active_directory.make_connection()
+    def get_active_directory_session(self):
+        return self.active_directory.make_session()
 
     def get_service(self, service_slug):
         services = self.tenantservice_set.select_subclasses()
@@ -251,7 +252,7 @@ class User(Trackable, Synchronizable):
             remote_value = getattr(remote_object, remote_attr)
             setattr(self, local_attr, remote_value)
 
-        self.last_synced_at = datetime.datetime.now()
+        extra_fields['last_synced_at'] = F('last_modified')
         self.save(**extra_fields)
 
     def get_remote(self):
@@ -259,26 +260,25 @@ class User(Trackable, Synchronizable):
 
     def push(self):
         remote_user = self.get_remote()
+        session = self.tenant.get_active_directory_session()
         if remote_user is None:
-            with self.tenant.get_active_directory_connection() as connection:
-                remote_user = ActiveDirectoryUser(
-                    connection,
-                    parent=self.tenant.active_directory.find_company(),
-                    given_name=self.first_name,
-                    sn=self.last_name,
-                    s_am_account_name=self.username,
-                    mail=self.email,
-                    display_name=self.display_name or self.get_default_display_name(),
-                    user_principal_name=self.tenant_email
-                    )
+            remote_user = ActiveDirectoryUser(
+                session,
+                parent=self.tenant.active_directory.find_company(),
+                given_name=self.first_name,
+                sn=self.last_name,
+                s_am_account_name=self.username,
+                mail=self.email,
+                display_name=self.display_name or self.get_default_display_name(),
+                user_principal_name=self.tenant_email
+            )
         else:
-            with self.tenant.get_active_directory_connection() as connection:
-                remote_user.mail = self.email
-                remote_user.display_name = self.display_name
-                remote_user.user_principal_name = self.tenant_email
-                remote_user.given_name = self.first_name
-                remote_user.sn = self.last_name
-                remote_user.save()
+            remote_user.mail = self.email
+            remote_user.display_name = self.display_name
+            remote_user.user_principal_name = self.tenant_email
+            remote_user.given_name = self.first_name
+            remote_user.sn = self.last_name
+        remote_user.save()
 
     def pull(self):
         pass
@@ -319,7 +319,8 @@ class User(Trackable, Synchronizable):
             display_name=remote_object.display_name
             )
 
-        obj.last_synced_at = datetime.datetime.now()
+        obj.last_modified = datetime.datetime.now()
+        obj.last_synced_at = F('last_modified')
         obj.save(editor=editor)
 
     @classmethod

@@ -19,7 +19,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
-from litedesk.lib.active_directory.connection import Connection
 from litedesk.lib.active_directory.classes.base import Company
 
 from tenants import models
@@ -32,17 +31,12 @@ class Command(BaseCommand):
         user_class = get_user_model()
         admin = user_class.objects.filter(is_superuser=True)[0]
         for ad in models.ActiveDirectory.objects.all():
-            url = 'ldap://%s' % ad.url
-            dn = ['DC=%s' % component for component in ad.url.split('.')]
-            dn.insert(0, 'cn=Users')
-            dn.insert(0, 'cn=%s' % ad.username)
-            dn = ','.join(dn)
-            with Connection(url, dn, ad.password) as connection:
-                for company in Company.search(connection, query='(ou=%s)' % ad.ou):
-                    for user in company.users:
-                        username = user.s_am_account_name
-                        local_user = models.User.objects.filter(username=username)
-                        if local_user.exists():
-                            local_user.get().merge(user, editor=admin)
-                        else:
-                            models.User.load(user, editor=admin, tenant=ad.tenant)
+            session = ad.make_session()
+            for company in Company.search(session, query='(ou=%s)' % ad.ou):
+                for user in company.users:
+                    username = user.s_am_account_name
+                    local_user = models.User.objects.filter(username=username)
+                    if local_user.exists():
+                        local_user.get().merge(user, editor=admin)
+                    else:
+                        models.User.load(user, editor=admin, tenant=ad.tenant)
