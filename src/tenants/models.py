@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import importlib
 import datetime
 
@@ -36,6 +37,8 @@ from litedesk.lib.active_directory.session import Session
 from litedesk.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
 from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
+
+log = logging.getLogger(__name__)
 
 
 if not hasattr(settings, 'PROVISIONABLE_SERVICES'):
@@ -214,7 +217,10 @@ class TenantService(models.Model):
             user = kw.get('instance')
             for service in user.tenant.tenantservice_set.select_subclasses():
                 if service.is_active_directory_controller:
-                    service.register(user)
+                    try:
+                        service.register(user)
+                    except Exception, e:
+                        log.warn('Error when registering %s. Error: %s' % (user, e))
 
     @staticmethod
     def get_available():
@@ -319,8 +325,7 @@ class User(Trackable, Synchronizable):
             display_name=remote_object.display_name
             )
 
-        obj.last_modified = datetime.datetime.now()
-        obj.last_synced_at = F('last_modified')
+        obj.last_synced_at = obj.last_modified = datetime.datetime.now()
         obj.save(editor=editor)
 
     @classmethod
