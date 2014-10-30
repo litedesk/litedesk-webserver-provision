@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright 2014, Deutsche Telekom AG - Laboratories (T-Labs)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+SECRET_KEY='change-this-and-make-it-a-secret'
+
+# SITE is a variable that contains per-instance, customizable parameters.
+SITE = {
+    'ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to Okta'
+    }
+
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import os
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+LOG_DIR = os.path.join(BASE_DIR, 'log')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+TEMPLATE_DEBUG = True
+ALLOWED_HOSTS = []
+
+
+# Database
+# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'cross7',
+        'USER': 'cross7',
+        'PASSWORD': None,
+        'HOST': ''
+    }
+}
+
+# Only for development, in case you need django to serve the static
+# files from the front-end code as well.
+
+STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
+
+_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
+
+STATICFILES_DIRS = [
+    _FRONT_END_ROOT,
+    os.path.abspath(os.path.join(BASE_DIR, 'venv', 'lib', 'python2.7', 'site-packages', 'rest_framework', 'static'))
+]
+
+
+EXTRA_STATIC_ROOTS = (
+    ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
+    ('img', os.path.join(_FRONT_END_ROOT, 'img')),
+)
+
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'example@gmail.com'
+EMAIL_HOST_PASSWORD = 'xxxxxx'
