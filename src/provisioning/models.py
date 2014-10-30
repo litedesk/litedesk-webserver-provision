@@ -105,6 +105,8 @@ class Okta(TenantService):
             client.add_user(user, activate=False)
         except okta.UserAlreadyExistsError:
             pass
+        except:
+            return
         return self.get_service_user(user)
 
     def activate(self, user, editor=None):
