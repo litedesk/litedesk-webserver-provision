@@ -38,20 +38,25 @@ ALLOWED_HOSTS = []
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'app.db')
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'cross7',
+        'USER': 'cross7',
+        'PASSWORD': None,
+        'HOST': ''
     }
 }
 
 # Only for development, in case you need django to serve the static
 # files from the front-end code as well.
 
+STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
+
 _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
 
 STATICFILES_DIRS = [
-    os.path.abspath(os.path.join(BASE_DIR, 'static')),
-    _FRONT_END_ROOT
-    ]
+    _FRONT_END_ROOT,
+    os.path.abspath(os.path.join(BASE_DIR, 'venv', 'lib', 'python2.7', 'site-packages', 'rest_framework', 'static'))
+]
 
 
 EXTRA_STATIC_ROOTS = (

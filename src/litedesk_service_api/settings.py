@@ -81,8 +81,10 @@ PROVISIONABLE_SERVICES = [
     'provisioning.models.AirWatch'
     ]
 
-
-from local_settings import *
+try:
+    from local_settings import *
+except ImportError:
+    from deployment_settings import *
 
 
 ### Logging Configuration ###
