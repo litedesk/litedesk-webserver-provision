@@ -215,12 +215,10 @@ class TenantService(models.Model):
     def on_user_creation(*args, **kw):
         if kw.get('created'):
             user = kw.get('instance')
+            user.push()
             for service in user.tenant.tenantservice_set.select_subclasses():
                 if service.is_active_directory_controller:
-                    try:
-                        service.register(user)
-                    except Exception, e:
-                        log.warn('Error when registering %s. Error: %s' % (user, e))
+                    service.register(user)
 
     @staticmethod
     def get_available():
@@ -251,6 +249,10 @@ class User(Trackable, Synchronizable):
     def tenant_email(self):
         return '%s@%s' % (self.username, self.tenant.email_domain)
 
+    @property
+    def full_username(self):
+        return '%s@%s' % (self.username, self.tenant.active_directory.url)
+
     def merge(self, remote_object, **extra_fields):
         if self.last_modified > self.__class__.get_remote_last_modified(remote_object): return
         for local_attr, remote_attr in self.__class__.SYNCHRONIZABLE_ATTRIBUTES_MAP.items():
@@ -265,26 +267,28 @@ class User(Trackable, Synchronizable):
         return self.tenant.active_directory.find_user(self.username)
 
     def push(self):
-        remote_user = self.get_remote()
-        session = self.tenant.get_active_directory_session()
-        if remote_user is None:
-            remote_user = ActiveDirectoryUser(
-                session,
-                parent=self.tenant.active_directory.find_company(),
-                given_name=self.first_name,
-                sn=self.last_name,
-                s_am_account_name=self.username,
-                mail=self.email,
-                display_name=self.display_name or self.get_default_display_name(),
-                user_principal_name=self.tenant_email
-            )
-        else:
-            remote_user.mail = self.email
-            remote_user.display_name = self.display_name
-            remote_user.user_principal_name = self.tenant_email
-            remote_user.given_name = self.first_name
-            remote_user.sn = self.last_name
-        remote_user.save()
+        log.info('Pushing user %s' % self)
+        with transaction.atomic():
+            remote_user = self.get_remote()
+            session = self.tenant.get_active_directory_session()
+            if remote_user is None:
+                remote_user = ActiveDirectoryUser(
+                    session,
+                    parent=self.tenant.active_directory.find_company(),
+                    given_name=self.first_name,
+                    sn=self.last_name,
+                    s_am_account_name=self.username,
+                    mail=self.email,
+                    display_name=self.display_name or self.get_default_display_name(),
+                    user_principal_name=self.full_username
+                    )
+            else:
+                remote_user.mail = self.email
+                remote_user.display_name = self.display_name
+                remote_user.given_name = self.first_name
+                remote_user.sn = self.last_name
+            remote_user.save()
+            self.mark_synced()
 
     def pull(self):
         pass
@@ -325,7 +329,6 @@ class User(Trackable, Synchronizable):
             display_name=remote_object.display_name
             )
 
-        obj.last_synced_at = obj.last_modified = datetime.datetime.now()
         obj.save(editor=editor)
 
     @classmethod

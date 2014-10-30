@@ -61,5 +61,9 @@ class Synchronizable(models.Model):
     def push(self):
         raise NotImplementedError
 
+    def mark_synced(self):
+        self.last_synced_at = self.last_modified
+        # models.Model.save(self, update_fields=['last_synced_at'])
+
     class Meta:
         abstract = True

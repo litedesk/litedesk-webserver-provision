@@ -146,3 +146,11 @@ LOGGING = {
         }
         }
     }
+
+
+for app in OUR_APPS:
+    LOGGING['loggers'][app] = {
+        'handlers': ['console', 'file', 'mail_admins'],
+        'level': 'DEBUG' if DEBUG else 'INFO',
+        'propagate': False
+        }

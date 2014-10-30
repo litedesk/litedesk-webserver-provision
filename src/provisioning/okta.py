@@ -23,6 +23,11 @@ ERROR_RESPONSES = {
     'ALREADY_ACTIVATED': {
         'summary': 'Activation failed because the user is already active',
         'code': 'E0000016'
+        },
+    'ALREADY_REGISTERED': {
+        # FIXME: I still need to get the correct message/error code.
+        'summary': 'Activation failed because the user is already active',
+        'code': 'E0000016'
         }
     }
 
@@ -151,14 +156,9 @@ class Client(object):
         data = {'profile': user_profile_data}
 
         response = self._make_request('users', method='POST', params=params, data=data)
-        try:
-            response.raise_for_status()
-            return response.json()
-        except requests.HTTPError, e:
-            if response.status_code == 400:
-                raise UserAlreadyExistsError
-            else:
-                raise e
+        response.raise_for_status()
+        check_for_error(response, 'ALREADY_REGISTERED', UserAlreadyExistsError)
+        return response.json()
 
     def activate_user(self, user, send_email=True):
         if getattr(user, 'activated', False):
