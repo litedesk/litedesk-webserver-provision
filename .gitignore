@@ -4,6 +4,8 @@ syntax: glob
 *.mo
 *.db
 local_settings.py
+deployment_settings.py
+deployment.wsgi
 
 /etc/*.conf
 /etc/*.ini
