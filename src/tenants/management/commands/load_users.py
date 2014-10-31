@@ -33,10 +33,10 @@ class Command(BaseCommand):
         for ad in models.ActiveDirectory.objects.all():
             session = ad.make_session()
             for company in Company.search(session, query='(ou=%s)' % ad.ou):
-                for user in company.users:
-                    username = user.s_am_account_name
+                for remote_user in company.users:
+                    username = remote_user.s_am_account_name
                     local_user = models.User.objects.filter(username=username)
                     if local_user.exists():
-                        local_user.get().merge(user, editor=admin)
+                        models.User.merge(local_user.get(), remote_user, editor=admin)
                     else:
-                        models.User.load(user, editor=admin, tenant=ad.tenant)
+                        models.User.load(remote_user, editor=admin, tenant=ad.tenant)

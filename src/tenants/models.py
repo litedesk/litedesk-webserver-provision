@@ -22,7 +22,6 @@ import datetime
 from django.conf import settings
 from django.db import models
 from django.db import transaction
-from django.db.models import F
 from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
@@ -215,7 +214,6 @@ class TenantService(models.Model):
     def on_user_creation(*args, **kw):
         if kw.get('created'):
             user = kw.get('instance')
-            user.push()
             for service in user.tenant.tenantservice_set.select_subclasses():
                 if service.is_active_directory_controller:
                     service.register(user)
@@ -253,16 +251,6 @@ class User(Trackable, Synchronizable):
     def full_username(self):
         return '%s@%s' % (self.username, self.tenant.active_directory.url)
 
-    def merge(self, remote_object, **extra_fields):
-        if self.last_modified > self.__class__.get_remote_last_modified(remote_object): return
-        for local_attr, remote_attr in self.__class__.SYNCHRONIZABLE_ATTRIBUTES_MAP.items():
-
-            remote_value = getattr(remote_object, remote_attr)
-            setattr(self, local_attr, remote_value)
-
-        extra_fields['last_synced_at'] = F('last_modified')
-        self.save(**extra_fields)
-
     def get_remote(self):
         return self.tenant.active_directory.find_user(self.username)
 
@@ -288,7 +276,6 @@ class User(Trackable, Synchronizable):
                 remote_user.given_name = self.first_name
                 remote_user.sn = self.last_name
             remote_user.save()
-            self.mark_synced()
 
     def pull(self):
         pass
@@ -298,8 +285,8 @@ class User(Trackable, Synchronizable):
 
     def save(self, *args, **kw):
         with transaction.atomic():
-            super(User, self).save(*args, **kw)
             self.sync(force_push=kw.get('force_insert'))
+            super(User, self).save(*args, **kw)
 
     def __unicode__(self):
         return self.username
@@ -326,7 +313,8 @@ class User(Trackable, Synchronizable):
             first_name=remote_object.given_name,
             last_name=remote_object.sn,
             email=remote_object.mail,
-            display_name=remote_object.display_name
+            display_name=remote_object.display_name,
+            last_remote_read=datetime.datetime.now()
             )
 
         obj.save(editor=editor)

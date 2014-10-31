@@ -8,52 +8,59 @@ from django.db import models
 class Synchronizable(models.Model):
     SYNCHRONIZABLE_ATTRIBUTES_MAP = {}
 
-    last_synced_at = models.DateTimeField(null=True, editable=False)
+    last_remote_read = models.DateTimeField(null=True, editable=False)
+    last_remote_save = models.DateTimeField(null=True, editable=False)
     last_modified = models.DateTimeField(auto_now=True, editable=False)
 
     @property
-    def synced(self):
-        if self.last_modified is None or self.last_synced_at is None:
-            return False
+    def last_sync(self):
+        if self.last_remote_read is not None and self.last_remote_save is not None:
+            return max(self.last_remote_read, self.last_remote_save)
 
-        return self.last_modified < self.last_synced_at
+        if self.last_remote_save is not None:
+            return self.last_remote_save
+
+        if self.last_remote_read is not None:
+            return self.last_remote_read
+
+        return None
+
+    def _needs_pull(self, remote_object):
+        if self.last_remote_read is None: return True
+        return self.last_remote_read < self.__class__.get_remote_last_modified(remote_object)
+
+    def _needs_push(self, remote_object):
+        if self.last_remote_save is None: return True
+        return self.last_modified > self.__class__.get_remote_last_modified(remote_object)
 
     @property
-    def needs_push(self):
-         # object was created in the client
-        if self.pk is None: return True
+    def _has_remote_save(self):
+        return self.last_remote_save is not None
 
-         # We never synced
-        if self.last_synced_at is None: return True
+    def sync(self, force_push=False, force_pull=False):
+        remote = self.get_remote()
+        changed = (self._get_changed_attributes(remote_object=remote) != [])
+        needs_pull = changed and self._needs_pull(remote)
+        needs_push = changed and self._needs_push(remote)
 
-        return self.last_modified > self.last_synced_at
+        if force_pull or needs_pull:
+            self.pull()
+            self.last_remote_read = datetime.datetime.now()
 
-    @property
-    def needs_pull(self):
-        if self.pk is None: return False
-        if self.last_synced_at is None: return True
+        if force_push or needs_push:
+            self.push()
+            self.last_remote_save = datetime.datetime.now()
 
-        return self.last_modified < self.last_synced_at
+    def _get_changed_attributes(self, remote_object=None):
+        remote = remote_object or self.get_remote()
+        return [
+            local_attr
+            for local_attr, remote_attr in self.SYNCHRONIZABLE_ATTRIBUTES_MAP.items()
+            if getattr(self, local_attr) != getattr(remote, remote_attr)
+            ]
 
     def get_remote(self):
         raise NotImplementedError
-
-    def sync(self, force_push=False, force_pull=False):
-        def _push():
-            self.push()
-            self.last_synced_at = datetime.datetime.now()
-
-        def _pull():
-            self.pull()
-            self.last_synced_at = self.last_modified = datetime.datetime.now()
-
-        if force_push: _push()
-        if force_pull: _pull()
-
-        if self.synced: return
-
-        if self.needs_push: _push()
-        if self.needs_pull: _pull()
 
     def pull(self):
         raise NotImplementedError
@@ -61,9 +68,24 @@ class Synchronizable(models.Model):
     def push(self):
         raise NotImplementedError
 
-    def mark_synced(self):
-        self.last_synced_at = self.last_modified
-        # models.Model.save(self, update_fields=['last_synced_at'])
+    @classmethod
+    def get_remote_last_modified(cls, remote_object):
+        raise NotImplementedError
+
+    @classmethod
+    def load(cls, remote_object, **kw):
+        raise NotImplementedError
+
+    @classmethod
+    def merge(cls, local_object, remote_object, **extra_fields):
+        remote_last_modified = local_object.get_remote_last_modified(remote_object)
+        if local_object.last_modified > remote_last_modified: return
+        for local_attr, remote_attr in local_object.SYNCHRONIZABLE_ATTRIBUTES_MAP.items():
+
+            remote_value = getattr(remote_object, remote_attr)
+            setattr(local_object, local_attr, remote_value)
+
+        local_object.save(**extra_fields)
 
     class Meta:
         abstract = True
