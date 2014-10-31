@@ -25,9 +25,9 @@ ERROR_RESPONSES = {
         'code': 'E0000016'
         },
     'ALREADY_REGISTERED': {
-        # FIXME: I still need to get the correct message/error code.
-        'summary': 'Activation failed because the user is already active',
-        'code': 'E0000016'
+        'summary': 'login: An object with this field already exists '
+        'in the current organization',
+        'code': 'E0000001'
         }
     }
 
@@ -36,7 +36,7 @@ def check_for_error(response, key, exception):
     try:
         response.raise_for_status()
     except requests.HTTPError, exc:
-        if check_is_known_error_response(response, 'ALREADY_ACTIVATED'):
+        if check_is_known_error_response(response, key):
             raise exception
         else:
             raise exc
@@ -46,9 +46,12 @@ def check_is_known_error_response(response, key):
     try:
         known_error_response = ERROR_RESPONSES[key]
         error_response = response.json()
+        error_summaries = [e.get('errorSummary') for e in error_response.get('errorCauses')]
+        if error_response.get('errorResponse'):
+            error_summaries.append(error_response['errorResponse'])
         return all([
             known_error_response['code'] == error_response.get('errorCode'),
-            known_error_response['summary'] == error_response.get('errorSummary')
+            known_error_response['summary'] in error_summaries
             ])
     except KeyError:
         return False
@@ -156,7 +159,6 @@ class Client(object):
         data = {'profile': user_profile_data}
 
         response = self._make_request('users', method='POST', params=params, data=data)
-        response.raise_for_status()
         check_for_error(response, 'ALREADY_REGISTERED', UserAlreadyExistsError)
         return response.json()
 
