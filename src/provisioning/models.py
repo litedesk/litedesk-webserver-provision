@@ -194,9 +194,8 @@ class AirWatch(TenantService):
 
     def assign(self, asset, user):
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
-        client = self.get_client()
         service_user = self.get_service_user(user)
-        client.add_user_to_group(service_user, group_id=metadata.get('group_id'))
+        service_user.add_to_group(metadata.get('group_id'))
 
     @classmethod
     def get_serializer_data(cls, **data):
