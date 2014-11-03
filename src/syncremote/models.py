@@ -53,6 +53,7 @@ class Synchronizable(models.Model):
 
     def _get_changed_attributes(self, remote_object=None):
         remote = remote_object or self.get_remote()
+        if remote is None: return self.SYNCHRONIZABLE_ATTRIBUTES_MAP.keys()
         return [
             local_attr
             for local_attr, remote_attr in self.SYNCHRONIZABLE_ATTRIBUTES_MAP.items()
