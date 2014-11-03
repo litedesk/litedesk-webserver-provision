@@ -29,7 +29,6 @@ from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User, UserProvisionable
 
 import okta
-import airwatch
 
 
 class PropertyTable(models.Model):
@@ -107,7 +106,7 @@ class Okta(TenantService):
             pass
         return self.get_service_user(user)
 
-    def activate(self, user, editor=None):
+    def activate(self, user):
         client = self.get_client()
         try:
             service_user = self.get_service_user(user)
@@ -133,9 +132,6 @@ class Okta(TenantService):
             )
         except okta.UserAlreadyActivatedError:
             pass
-        finally:
-            user.status = user.STATUS.active
-            user.save(editor=editor)
 
     def assign(self, asset, user):
         print 'assigning asset %s to %s' % (asset, user)
@@ -172,20 +168,29 @@ class AirWatch(TenantService):
         return None
 
     def get_client(self):
-        return airwatch.Client(self.server_url, self.username, self.password, self.api_token)
+        from litedesk.lib.airwatch.client import Client
+        return Client(
+            self.server_url, self.username, self.password, self.api_token
+            )
 
     def get_service_user(self, user):
         client = self.get_client()
-        return client.get(airwatch.User, user.tenant_email)
+        from litedesk.lib.airwatch.user import User
+        return User.get_remote(client, user.username)
 
     def register(self, user):
         client = self.get_client()
-        client.add_user(user, activate=False)
-        return self.get_service_user(user)
+        from litedesk.lib.airwatch.user import User, UserAlreadyRegisteredError
+        try:
+            return User.create(client, user.username)
+        except UserAlreadyRegisteredError:
+            return self.get_service_user(user)
 
-    def activate(self, user, device=None):
-        client = self.get_client()
-        client.activate_user(user)
+    def activate(self, user):
+        service_user = self.get_service_user(user)
+        if service_user is None:
+            service_user = self.register(user)
+        service_user.activate()
 
     def assign(self, asset, user):
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
@@ -234,9 +239,8 @@ class UserPlatform(UserProvisionable):
     def on_user_provision(*args, **kw):
         instance = kw.get('instance')
         user = instance.user
-        editor = kw.get('editor')
-        for service in user.platforms.select_subclasses():
-            service.activate(user, editor=editor)
+        service = instance.platform
+        service.activate(user)
 
     class Meta:
         unique_together = ('user', 'platform')
