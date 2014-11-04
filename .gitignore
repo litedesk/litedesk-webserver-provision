@@ -5,8 +5,10 @@ syntax: glob
 *.db
 local_settings.py
 deployment_settings.py
+
 deployment.wsgi
 
+djcelery
 /etc/*.conf
 /etc/*.ini
 /bin
