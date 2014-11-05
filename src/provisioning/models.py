@@ -24,6 +24,7 @@ from autoslug import AutoSlugField
 from jsonfield import JSONField
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeStampedModel
+from litedesk.lib import airwatch
 
 from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User, UserProvisionable
@@ -134,7 +135,6 @@ class Okta(TenantService):
             pass
 
     def assign(self, asset, user):
-        print 'assigning asset %s to %s' % (asset, user)
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         client = self.get_client()
         service_user = self.get_service_user(user)
@@ -168,29 +168,30 @@ class AirWatch(TenantService):
         return None
 
     def get_client(self):
-        from litedesk.lib.airwatch.client import Client
-        return Client(
+
+        return airwatch.client.Client(
             self.server_url, self.username, self.password, self.api_token
             )
 
     def get_service_user(self, user):
         client = self.get_client()
-        from litedesk.lib.airwatch.user import User
-        return User.get_remote(client, user.username)
+        return airwatch.user.User.get_remote(client, user.username)
 
     def register(self, user):
         client = self.get_client()
-        from litedesk.lib.airwatch.user import User, UserAlreadyRegisteredError
         try:
-            return User.create(client, user.username)
-        except UserAlreadyRegisteredError:
+            return airwatch.user.User.create(client, user.username)
+        except airwatch.user.UserAlreadyRegisteredError:
             return self.get_service_user(user)
 
     def activate(self, user):
         service_user = self.get_service_user(user)
         if service_user is None:
             service_user = self.register(user)
-        service_user.activate()
+        try:
+            service_user.activate()
+        except airwatch.user.UserAlreadyActivatedError:
+            pass
 
     def assign(self, asset, user):
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
@@ -238,8 +239,11 @@ class UserPlatform(UserProvisionable):
     def on_user_provision(*args, **kw):
         instance = kw.get('instance')
         user = instance.user
-        service = instance.platform
+        # platforms will be a TenantService object. We need the subclass.
+        service = instance.platform.__subclass__
         service.activate(user)
+        for software in user.software.all():
+            service.assign(software, user)
 
     class Meta:
         unique_together = ('user', 'platform')

@@ -186,10 +186,13 @@ class UserProvisionSerializer(serializers.ModelSerializer):
             related_item.save(editor=editor)
 
     def save_object(self, obj, **kw):
-        self._update_m2m('platforms', models.UserPlatform, 'platform')
         self._update_m2m('software', models.UserSoftware, 'software')
         self._update_m2m('devices', models.UserDevice, 'device')
         self._update_m2m('mobile_data_plans', models.UserMobileDataPlan, 'mobile_data_plan')
+
+        # platforms come last, so we can be sure that all
+        # software/devices/simcards are properly defined.        
+        self._update_m2m('platforms', models.UserPlatform, 'platform')        
 
         return obj
 
