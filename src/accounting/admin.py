@@ -22,14 +22,13 @@ import models
 
 
 class OfferAdmin(admin.ModelAdmin):
-    search_fields = ('tenant')
-    list_display = ('tenant', 'status', 'currency')
-    list_filter = ('tenant', 'status', 'currency')
+    list_display = ('status', 'currency')
+    list_filter = ('status', 'currency')
 
 
 @admin.register(models.Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_filter = ('tenant', 'status', 'period')
+    list_filter = ('status', 'period')
 
 
 @admin.register(models.Product)

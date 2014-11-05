@@ -46,30 +46,6 @@ class PropertyTable(models.Model):
         abstract = True
 
 
-class Asset(TimeStampedModel):
-    objects = InheritanceManager()
-    name = models.CharField(max_length=1000)
-    slug = AutoSlugField(populate_from='name', unique=False, default='')
-    description = models.TextField(null=True, blank=True)
-
-    def __unicode__(self):
-        return self.name
-
-
-class Software(Asset):
-    web = models.BooleanField(default=True)
-    mobile = models.BooleanField(default=False)
-    desktop = models.BooleanField(default=False)
-
-
-class Device(Asset):
-    image = models.ImageField(null=True, blank=True)
-
-
-class MobileDataPlan(Asset):
-    pass
-
-
 class TenantAsset(PropertyTable):
     tenant = models.ForeignKey(Tenant)
     asset = models.ForeignKey(Asset)

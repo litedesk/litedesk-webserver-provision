@@ -22,11 +22,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from model_utils import Choices
 from model_utils.managers import InheritanceManager, QueryManager
-from model_utils.models import TimeStampedModel
+from model_utils.models import TimeStampedModel, TimeFramedModel
 from model_utils.fields import StatusField
 from picklefield.fields import PickledObjectField
-
-from tenants.models import Tenant, User
+from provisioning.models import Asset
 
 
 CURRENCIES = (
@@ -40,20 +39,19 @@ class CatalogEditionError(Exception):
     pass
 
 
-class Offer(TimeStampedModel):
+class Offer(TimeStampedModel, TimeFramedModel):
     STATUS = Choices('inactive', 'available', 'retired', 'suspended')
 
     objects = InheritanceManager()
     available = QueryManager(status='available')
 
     name = models.CharField(max_length=500)
-    tenant = models.ForeignKey(Tenant)
     currency = models.CharField(max_length=50, choices=CURRENCIES)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     setup_price = models.DecimalField(null=True, max_digits=10, decimal_places=2)
     item_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
-    item = GenericForeignKey('item_type', 'object_id')
+    item = models.ForeignKey(Asset)
     status = StatusField()
 
     @property
@@ -100,14 +98,25 @@ class Product(Offer):
     pass
 
 
-class Order(TimeStampedModel):
-    user = models.ForeignKey(User)
-    account = models.ForeignKey(settings.AUTH_USER_MODEL)
+class Asset(TimeStampedModel):
+    objects = InheritanceManager()
+    name = models.CharField(max_length=1000)
+    slug = AutoSlugField(populate_from='name', unique=False, default='')
+    description = models.TextField(null=True, blank=True)
+
+    def __unicode__(self):
+        return self.name
 
 
-class OrderLine(models.Model):
-    STATUS = Choices('ordered', 'completed', 'failed', 'accepted', 'rejected', 'expired')
-    order = models.ForeignKey(Order)
-    item = models.ForeignKey(Offer)
-    status = StatusField()
-    extra = PickledObjectField()
+class Software(Asset):
+    web = models.BooleanField(default=True)
+    mobile = models.BooleanField(default=False)
+    desktop = models.BooleanField(default=False)
+
+
+class Device(Asset):
+    image = models.ImageField(null=True, blank=True)
+
+
+class MobileDataPlan(Asset):
+    pass

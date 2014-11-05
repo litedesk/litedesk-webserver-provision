@@ -36,6 +36,7 @@ from litedesk.lib.active_directory.session import Session
 from litedesk.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
 from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
+from accounting.models import Offer
 
 log = logging.getLogger(__name__)
 
@@ -333,6 +334,8 @@ class UserProvisionable(Trackable, TimeFramedModel):
 
     user = models.ForeignKey(User)
     status = StatusField()
+    offer = models.ForeignKey(Offer)
+    objects = InheritanceManager()
 
     @property
     def tenant(self):
@@ -341,9 +344,6 @@ class UserProvisionable(Trackable, TimeFramedModel):
     @property
     def provisioned(self):
         return self.start is not None and self.end is None
-
-    class Meta:
-        abstract = True
 
 
 class UserGroup(models.Model):
