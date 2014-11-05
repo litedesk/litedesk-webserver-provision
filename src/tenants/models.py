@@ -37,6 +37,8 @@ from litedesk.lib.active_directory.classes.base import Company, User as ActiveDi
 from audit.models import Trackable, UntrackableChangeError
 from syncremote.models import Synchronizable
 
+import tasks
+
 log = logging.getLogger(__name__)
 
 
@@ -154,6 +156,10 @@ class TenantService(models.Model):
     api_token = models.CharField(max_length=128)
 
     @property
+    def __subclass__(self):
+        return TenantService.objects.get_subclass(id=self.id)
+
+    @property
     def service(self):
         return self.__class__.service_slug()
 
@@ -216,7 +222,7 @@ class TenantService(models.Model):
             user = kw.get('instance')
             for service in user.tenant.tenantservice_set.select_subclasses():
                 if service.is_active_directory_controller:
-                    service.register(user)
+                    tasks.register_user_in_provisioning_service(service, user)
 
     @staticmethod
     def get_available():
