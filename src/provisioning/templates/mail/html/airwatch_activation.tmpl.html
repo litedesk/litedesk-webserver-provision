@@ -38,7 +38,7 @@
                                             <span style="font-size: 18px; color: rgb(255, 255, 255); line-height: 130%;">
                                               <span style="font-family: 'trebuchet ms', helvetica, sans-serif; color: rgb(255, 255, 255); line-height: 130%;">
                                                 <span style="color: rgb(255, 255, 255); line-height: 130%;">
-                                                  <span style="line-height: 130%;">Welcome to Okta!</span>
+                                                  <span style="line-height: 130%;">Welcome to AirWatch!</span>
                                                 </span>
                                               </span>
                                             </span>
@@ -60,9 +60,7 @@
                                           <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
                                             <span style="color: rgb(118, 118, 121); line-height: 150%;">
                                               Hi {{user.first_name}}, <br />
-                                              your organization is using Okta to manage your web applications.
-                                              This means you can conveniently access all the applications you normally use, through a single, secure home page.
-                                              Watch this short video to learn more: <a target="_blank" href="https://www.okta.com/intro-to-okta/" style="text-decoration: none; color: rgb(101, 164, 234);">https://www.okta.com/intro-to-okta/</a>
+                                              your organization is using AirWatch to manage your mobile devices. Your account has been enabled and you may activate your device. Using your device’s web browser, please navigate to <a target="_blank" href="https://awagent.com/" style="text-decoration: none; color: rgb(101, 164, 234);">https://awagent.com/</a>. If the AirWatch MDM Agent app is installed on your device, you will be redirected to it. If not, you will be redirected to your device's official app store to download it.
                                           </span>
                                         </span>
                                       </span>
@@ -78,15 +76,20 @@
   <div style="text-align: center;">
     <span style="font-size: 14px; line-height: 150%;">
       <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
-        <strong>YOUR SYSTEM ADMINISTRATOR HAS CREATED AN OKTA USER ACCOUNT FOR YOU.<br>
+        <strong>YOUR SYSTEM ADMINISTRATOR HAS CREATED AN AIRWATCH ACCOUNT FOR YOU.<br>
       </strong>
-      <br>Click the following link to activate your Okta account.<br>This link expires in 7 days.<br>
-      <br>
-        <a target="_blank" href="{{ activation_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ activation_url }}</a>
-        <br>
-          <br>YOUR USERNAME IS<br><a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a><br>
-              <br>YOUR ORGANIZATION’S SIGN-IN PAGE IS<br>
-              <a target="_blank" href="{{ service.portal_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ service.portal_url }}</a>
+      <br>Please use the following credentials to authenticate.<br>
+          <br>
+            YOUR SERVER<br>{{ server_url }}<br>
+              <br>YOUR GROUP ID<br>
+             {{ group_id }}<br>
+              <br>YOUR USERNAME<br>
+             {{ username }}<br>
+              <br>YOUR PASSWORD<br>
+             Use Okta password<br>
+             <br>Alternatively, scan the QR code below to begin enrollment.<br>
+             <br>
+             {{ qr_code }}
             </span>
           </span>
         </div>
