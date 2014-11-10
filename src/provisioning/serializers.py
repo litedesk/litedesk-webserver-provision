@@ -52,6 +52,16 @@ class ModelRelatedChoiceField(serializers.PrimaryKeyRelatedField):
             msg = self.error_messages['incorrect_type'] % received
             raise ValidationError(msg)
 
+    def field_to_native(self, obj, field_name):
+        field = self.source or field_name
+        queryset = getattr(obj, field)
+        if not hasattr(queryset, 'current'):
+            raise AttributeError(
+                '%s does not have %s to list current provisioned items' % (obj, field)
+                )
+
+        return [self.to_native(item.provisioned_item.pk) for item in queryset.current()]
+
 
 # We cheat a little bit on the fact that both auth.models.User
 # and tenants.models.User will have a reference to tenant, and they
@@ -165,34 +175,28 @@ class UserProvisionSerializer(serializers.ModelSerializer):
     devices = UserAssetChoiceField(asset=models.Device)
     simcards = UserAssetChoiceField(asset=models.MobileDataPlan, source='mobile_data_plans')
 
-    def _update_m2m(self, m2m_field_name, related_model, related_field_name):
+    def _update_m2m(self, m2m_field_name):
         request = self.context.get('request')
         editor = request.user
 
-        current = getattr(self.object, m2m_field_name).all()
+        manager = getattr(self.object, m2m_field_name)
+        current = manager.current()
         selected = self.object._m2m_data.get(m2m_field_name)
 
         to_add = [it for it in selected if it not in current]
         to_remove = [it for it in current if it not in selected]
 
-        lookup_attr = '%s__in' % related_field_name
-
-        related_model.objects.filter(user=self.object, **{lookup_attr: to_remove}).delete()
-        for item in to_add:
-            related_item = related_model(
-                user=self.object,
-                **{related_field_name: item}
-                )
-            related_item.save(editor=editor)
+        manager.remove(*to_remove, editor=editor)
+        manager.add(*to_add, editor=editor)
 
     def save_object(self, obj, **kw):
-        self._update_m2m('software', models.UserSoftware, 'software')
-        self._update_m2m('devices', models.UserDevice, 'device')
-        self._update_m2m('mobile_data_plans', models.UserMobileDataPlan, 'mobile_data_plan')
+        self._update_m2m('software')
+        self._update_m2m('devices')
+        self._update_m2m('mobile_data_plans')
 
         # platforms come last, so we can be sure that all
-        # software/devices/simcards are properly defined.        
-        self._update_m2m('platforms', models.UserPlatform, 'platform')        
+        # software/devices/simcards are properly defined.
+        self._update_m2m('platforms')
 
         return obj
 
@@ -217,19 +221,19 @@ class UserSummarySerializer(serializers.ModelSerializer):
     def get_user_devices(self, obj):
         return [
             self._serialize_asset(ud.id, ud.device.name)
-            for ud in obj.userdevice_set.all()
+            for ud in obj.userdevice_set.current()
             ]
 
     def get_user_software(self, obj):
         return [
             self._serialize_asset(us.id, us.software.name)
-            for us in obj.usersoftware_set.all()
+            for us in obj.usersoftware_set.current()
             ]
 
     def get_user_mobile_data_plans(self, obj):
         return [
             self._serialize_asset(us.id, us.mobile_data_plan.name)
-            for us in obj.usermobiledataplan_set.all()
+            for us in obj.usermobiledataplan_set.current()
             ]
 
     def get_user_platforms(self, obj):

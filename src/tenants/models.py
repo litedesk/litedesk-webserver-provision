@@ -29,7 +29,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.template.defaultfilters import slugify
 from model_utils import Choices
 from model_utils.fields import StatusField
-from model_utils.models import TimeStampedModel, TimeFramedModel
+from model_utils.models import TimeStampedModel
 from model_utils.managers import InheritanceManager, QueryManager
 
 from litedesk.lib.active_directory.session import Session
@@ -331,25 +331,6 @@ class User(Trackable, Synchronizable):
 
     class Meta:
         unique_together = ('tenant', 'username')
-
-
-class UserProvisionable(Trackable, TimeFramedModel):
-    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end']
-    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
-
-    user = models.ForeignKey(User)
-    status = StatusField()
-
-    @property
-    def tenant(self):
-        return self.user.tenant
-
-    @property
-    def provisioned(self):
-        return self.start is not None and self.end is None
-
-    class Meta:
-        abstract = True
 
 
 class UserGroup(models.Model):

@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+import provisioning.models
 from django.conf import settings
 
 
@@ -18,25 +19,25 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='devices',
-            field=models.ManyToManyField(to='provisioning.Device', through='provisioning.UserDevice'),
+            field=provisioning.models.ProvisionManyToManyField(to='provisioning.Device', through='provisioning.UserDevice'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='user',
             name='mobile_data_plans',
-            field=models.ManyToManyField(to='provisioning.MobileDataPlan', through='provisioning.UserMobileDataPlan'),
+            field=provisioning.models.ProvisionManyToManyField(to='provisioning.MobileDataPlan', through='provisioning.UserMobileDataPlan'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='user',
             name='platforms',
-            field=models.ManyToManyField(to='tenants.TenantService', through='provisioning.UserPlatform'),
+            field=provisioning.models.ProvisionManyToManyField(to='tenants.TenantService', through='provisioning.UserPlatform'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='user',
             name='software',
-            field=models.ManyToManyField(to='provisioning.Software', through='provisioning.UserSoftware'),
+            field=provisioning.models.ProvisionManyToManyField(to='provisioning.Software', through='provisioning.UserSoftware'),
             preserve_default=True,
         ),
         migrations.AddField(
