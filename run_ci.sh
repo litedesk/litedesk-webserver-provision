@@ -1,5 +1,6 @@
+#!/bin/bash -ex
 #export DJANGO_SETTINGS_MODULE=cloudbook_host_server.settings.testing
-export PYTHONPATH=$WORKSPACE/venv/lib/python2.7
+#export PYTHONPATH=$WORKSPACE/venv/lib/python2.7
 
 virtualenv "$WORKSPACE/venv"
 source "$WORKSPACE/venv/bin/activate"
