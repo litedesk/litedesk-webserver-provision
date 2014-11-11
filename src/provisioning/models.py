@@ -268,7 +268,10 @@ class AirWatch(TenantService):
 
     def get_service_user(self, user):
         client = self.get_client()
-        return airwatch.user.User.get_remote(client, user.username)
+        service_user = airwatch.user.User.get_remote(client, user.username)
+        if service_user is None:
+            service_user = airwatch.user.User.create(client, user.username)
+        return service_user
 
     def register(self, user):
         client = self.get_client()

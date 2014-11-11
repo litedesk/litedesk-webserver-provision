@@ -221,19 +221,19 @@ class UserSummarySerializer(serializers.ModelSerializer):
     def get_user_devices(self, obj):
         return [
             self._serialize_asset(ud.id, ud.device.name)
-            for ud in obj.userdevice_set.current()
+            for ud in obj.userdevice_set.filter(end=None)
             ]
 
     def get_user_software(self, obj):
         return [
             self._serialize_asset(us.id, us.software.name)
-            for us in obj.usersoftware_set.current()
+            for us in obj.usersoftware_set.filter(end=None)
             ]
 
     def get_user_mobile_data_plans(self, obj):
         return [
             self._serialize_asset(us.id, us.mobile_data_plan.name)
-            for us in obj.usermobiledataplan_set.current()
+            for us in obj.usermobiledataplan_set.filter(end=None)
             ]
 
     def get_user_platforms(self, obj):
