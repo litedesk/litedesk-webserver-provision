@@ -62,6 +62,21 @@ def create_many_provisionable_related_manager(superclass, rel):
         def current(self):
             return self.through._default_manager.filter(end=None)
 
+        def __call__(self, **kwargs):
+            manager = getattr(self.model, kwargs.pop('manager'))
+            manager_class = create_many_provisionable_related_manager(manager.__class__, rel)
+            return manager_class(
+                model=self.model,
+                query_field_name=self.query_field_name,
+                instance=self.instance,
+                symmetrical=self.symmetrical,
+                source_field_name=self.source_field_name,
+                target_field_name=self.target_field_name,
+                reverse=self.reverse,
+                through=self.through,
+                prefetch_cache_name=self.prefetch_cache_name
+            )
+
     return ProvisionRelatedManager
 
 
