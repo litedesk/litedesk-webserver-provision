@@ -303,7 +303,6 @@ class UserPlatform(UserProvisionable):
         self.status = UserProvisionable.STATUS.active
         self.save(editor=editor)
 
-
     def provision(self, editor=None):
         if not self.is_active:
             self.activate(editor=editor)
