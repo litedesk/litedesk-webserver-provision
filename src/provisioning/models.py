@@ -297,6 +297,13 @@ class UserPlatform(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['platform']
     platform = models.ForeignKey(TenantService)
 
+    def activate(self, editor=None):
+        platform = self.platform.__subclass__
+        platform.activate(self.user)
+        self.status = UserProvisionable.STATUS.active
+        self.save(editor=editor)
+
+
     def provision(self, editor=None):
         if not self.is_active:
             self.activate(editor=editor)
