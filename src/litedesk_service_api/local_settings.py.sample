@@ -48,7 +48,7 @@ DATABASES = {
 # files from the front-end code as well.
 
 if os.environ.get('JENKINS_HOME'):
-    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..','..','workspace', '_cross7', 'ui'))    
+    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..','..', '_cross7','workspace', 'ui'))    
 else:
     _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
 
