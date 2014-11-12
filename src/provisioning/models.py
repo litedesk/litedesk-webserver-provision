@@ -16,15 +16,11 @@
 # limitations under the License.
 
 import datetime
-import six
 
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.db import models
-from django.db.models.fields import related
-from django.utils.translation import ugettext_lazy as _
-from django.utils.functional import curry, cached_property
 from autoslug import AutoSlugField
 from jsonfield import JSONField
 from model_utils import Choices
@@ -36,93 +32,9 @@ from audit.models import Trackable
 from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User
 
+from fields import ProvisionManyToManyField
 import okta
-
-
-def create_many_provisionable_related_manager(superclass, rel):
-    related_manager_class = related.create_many_related_manager(superclass, rel)
-
-    class ProvisionRelatedManager(related_manager_class):
-
-        def add(self, *objs, **kw):
-            editor = kw.get('editor')
-            for obj in objs:
-                m2m_relation = self.through(**{
-                    self.target_field_name: obj,
-                    self.source_field_name: self.instance,
-                    'start': datetime.datetime.now()
-                    })
-                m2m_relation.save(editor=editor)
-
-        def remove(self, *objs, **kw):
-            editor = kw.get('editor')
-            for obj in objs:
-                obj.deprovision(editor=editor)
-
-        def current(self):
-            return self.through._default_manager.filter(end=None)
-
-    return ProvisionRelatedManager
-
-
-class ProvisionManyRelatedObjectsDescriptor(related.ManyRelatedObjectsDescriptor):
-    @cached_property
-    def related_manager_cls(self):
-        return create_many_provisionable_related_manager(
-            self.related.model._default_manager.__class__,
-            self.related.field.rel
-        )
-
-
-class ProvisionReverseManyRelatedObjectsDescriptor(related.ReverseManyRelatedObjectsDescriptor):
-    @cached_property
-    def related_manager_cls(self):
-        return create_many_provisionable_related_manager(
-            self.field.rel.to._default_manager.__class__,
-            self.field.rel
-        )
-
-
-class ProvisionManyToManyField(models.ManyToManyField):
-    description = _('Many-to-many relationship with provisionable objects')
-
-    def contribute_to_class(self, cls, name):
-        related_to_self = (self.rel.to == "self" or self.rel.to == cls._meta.object_name)
-        if self.rel.symmetrical and related_to_self:
-            self.rel.related_name = "%s_rel_+" % name
-
-        super(models.ManyToManyField, self).contribute_to_class(cls, name)
-
-        if not self.rel.through and not cls._meta.abstract and not cls._meta.swapped:
-            self.rel.through = related.create_many_to_many_intermediary_model(self, cls)
-
-        setattr(cls, self.name, ProvisionReverseManyRelatedObjectsDescriptor(self))
-
-        self.m2m_db_table = curry(self._get_m2m_db_table, cls._meta)
-
-        if isinstance(self.rel.through, six.string_types):
-            def resolve_through_model(field, model, cls):
-                field.rel.through = model
-            related.add_lazy_relation(cls, self, self.rel.through, resolve_through_model)
-
-    def contribute_to_related_class(self, cls, related):
-        if not self.rel.is_hidden() and not related.model._meta.swapped:
-            setattr(
-                cls,
-                related.get_accessor_name(),
-                ProvisionManyRelatedObjectsDescriptor(related)
-                )
-
-        self.m2m_column_name = curry(self._get_m2m_attr, related, 'column')
-        self.m2m_reverse_name = curry(self._get_m2m_reverse_attr, related, 'column')
-
-        self.m2m_field_name = curry(self._get_m2m_attr, related, 'name')
-        self.m2m_reverse_field_name = curry(self._get_m2m_reverse_attr, related, 'name')
-
-        get_m2m_rel = curry(self._get_m2m_attr, related, 'rel')
-        self.m2m_target_field_name = lambda: get_m2m_rel().field_name
-        get_m2m_reverse_rel = curry(self._get_m2m_reverse_attr, related, 'rel')
-        self.m2m_reverse_target_field_name = lambda: get_m2m_reverse_rel().field_name
+import tasks
 
 
 class PropertyTable(models.Model):
@@ -331,7 +243,7 @@ class TenantServiceAsset(PropertyTable):
 
 
 class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
-    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'deprovisioned')
+    STATUS = Choices('staged', 'active', 'suspended', 'deprovisioned')
     TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'status_changed']
 
     user = models.ForeignKey(User)
@@ -343,6 +255,10 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
     @property
     def is_provisionable(self):
         return self.status != UserProvisionable.STATUS.deprovisioned
+
+    @property
+    def is_active(self):
+        return self.status == UserProvisionable.STATUS.active
 
     @property
     def provisioned_item(self):
@@ -376,13 +292,16 @@ class UserPlatform(UserProvisionable):
 
     @staticmethod
     def on_user_provision(*args, **kw):
+        editor = kw.get('editor')
         instance = kw.get('instance')
-        user = instance.user
-        # platforms will be a TenantService object. We need the subclass.
-        service = instance.platform.__subclass__
-        service.activate(user)
-        for software in user.software.all():
-            service.assign(software, user)
+        if kw.get('created'):
+            tasks.run_provisioning_for_user(instance.user, editor=editor)
+
+    def activate(self, editor=None):
+        self.status = UserProvisionable.STATUS.active
+        service = self.platform.__subclass__
+        service.activate(self.user)
+        self.save(editor=editor)
 
 
 class UserDevice(UserProvisionable):
@@ -393,14 +312,6 @@ class UserDevice(UserProvisionable):
 class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
     software = models.ForeignKey(Software)
-
-    @staticmethod
-    def on_user_provision(*args, **kw):
-        instance = kw.get('instance')
-        user = instance.user
-        software = instance.software
-        for service in user.platforms.select_subclasses():
-            service.assign(software, user)
 
 
 class UserMobileDataPlan(UserProvisionable):
@@ -418,11 +329,6 @@ User.add_to_class(
 
 trackable_model_changed.connect(
     UserPlatform.on_user_provision, dispatch_uid='user_platform_provision', sender=UserPlatform
-    )
-
-
-trackable_model_changed.connect(
-    UserSoftware.on_user_provision, dispatch_uid='user_software_provision', sender=UserSoftware
     )
 
 
