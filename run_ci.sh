@@ -18,6 +18,7 @@ pip install --download-cache=/tmp -r $WORKSPACE/requirements.txt || exit 23
 rm -rf "$WORKSPACE/cross7-data"
 git clone git@bitbucket.org:litedesk/cross7-data.git
 rm "$WORKSPACE/app.db"
+cp "$WORKSPACE/src/litedesk_service_api/local_setting.py.sample" "$WORKSPACE/src/litedesk_service_api/local_setting.py" 
 python "$WORKSPACE/src/manage.py" migrate || exit 23
 python "$WORKSPACE/src/manage.py" loaddata "$WORKSPACE/cross7-data/fixtures/app_bootstrap.json"  || exit 23
 python "$WORKSPACE/src/manage.py" load_users || exit 23
@@ -25,4 +26,3 @@ stop_server
 python "$WORKSPACE/src/manage.py" runserver || exit 23
 
 #python $PY_PROFILE "$WORKSPACE/src/manage.py" taskname || exit 23
-

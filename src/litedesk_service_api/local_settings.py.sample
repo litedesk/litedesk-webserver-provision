@@ -47,7 +47,10 @@ DATABASES = {
 # Only for development, in case you need django to serve the static
 # files from the front-end code as well.
 
-_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
+if os.environ.get('JENKINS_HOME'):
+    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..','..','workspace', '_cross7', 'ui'))    
+else:
+    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
 
 STATICFILES_DIRS = [
     os.path.abspath(os.path.join(BASE_DIR, 'static')),
