@@ -13,7 +13,7 @@ fi
 
 mkdir -p "$WORKSPACE/logs"
 
-pip install -r --download-cache=/tmp $WORKSPACE/requirements.txt || exit 23
+pip install --download-cache=/tmp -r $WORKSPACE/requirements.txt || exit 23
 # download the fixtures
 rm -rf "$WORKSPACE/cross7-data" 2>/dev/null
 git clone git@bitbucket.org:litedesk/cross7-data.git
