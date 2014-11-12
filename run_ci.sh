@@ -1,11 +1,11 @@
 #!/bin/bash -ex
 #export DJANGO_SETTINGS_MODULE=cloudbook_host_server.settings.testing
-#export PYTHONPATH=$WORKSPACE/venv/lib/python2.7
+#lexport PYTHONPATH=$WORKSPACE/venv/lib/python2.7
 stop_server(){
   pkill -f "manage.py runserver" || return 0
 }
-virtualenv "$WORKSPACE/venv"
-source "$WORKSPACE/venv/bin/activate"
+virtualenv "$WORKSPACE/env"
+source "$WORKSPACE/env/bin/activate"
 
 if [ "$1" = "-profile" ]; then
     PY_PROFILE="-m cProfile -o cprof.out"
