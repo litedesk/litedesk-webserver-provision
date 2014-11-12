@@ -16,6 +16,8 @@
 # limitations under the License.
 
 import datetime
+import random
+import string
 
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -26,7 +28,7 @@ from jsonfield import JSONField
 from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
-from litedesk.lib import airwatch
+from litedesk.lib import airwatch, active_directory
 
 from audit.models import Trackable
 from audit.signals import trackable_model_changed
@@ -112,6 +114,15 @@ class Okta(TenantService):
             pass
         return self.get_service_user(user)
 
+    def set_random_ad_password(self, user):
+        remote_user = user.get_remote()
+        password = ''.join([
+            random.choice(string.ascii_letters + string.digits)
+            for n in xrange(8)
+        ])
+        remote_user.set_password(password)
+        return password
+
     def activate(self, user):
         client = self.get_client()
         try:
@@ -120,11 +131,13 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
+            password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
             template_parameters = {
                 'user': user,
                 'service': self,
-                'activation_url': activation_response.get('activationUrl')
+                'activation_url': activation_response.get('activationUrl'),
+                'password': password
             }
             text_msg = render_to_string('mail/text/activation.tmpl.txt', template_parameters)
             html_msg = render_to_string('mail/html/activation.tmpl.html', template_parameters)
