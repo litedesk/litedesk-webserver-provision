@@ -42,7 +42,11 @@ def create_many_provisionable_related_manager(superclass, rel):
                 obj.deprovision(editor=editor)
 
         def current(self):
-            return self.through._default_manager.filter(end=None)
+            filters = {
+                'end': None,
+                self.source_field_name: self.instance
+                }
+            return self.through._default_manager.filter(**filters)
 
         def __call__(self, **kwargs):
             manager = getattr(self.model, kwargs.pop('manager'))
