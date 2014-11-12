@@ -13,12 +13,12 @@ fi
 
 mkdir -p "$WORKSPACE/logs"
 
-pip install --download-cache=/tmp -r $WORKSPACE/requirements.txt || exit 23
+pip install -r $WORKSPACE/requirements.txt -I || exit 23
 # download the fixtures
-rm -rf "$WORKSPACE/cross7-data"
+rm -rf "$WORKSPACE/cross7-data" 2>/dev/null
 git clone git@bitbucket.org:litedesk/cross7-data.git
-rm "$WORKSPACE/app.db"
-cp "$WORKSPACE/src/litedesk_service_api/local_setting.py.sample" "$WORKSPACE/src/litedesk_service_api/local_setting.py" 
+rm -f "$WORKSPACE/app.db" 2>/dev/null
+cp "$WORKSPACE/src/litedesk_service_api/local_settings.py.sample" "$WORKSPACE/src/litedesk_service_api/local_settings.py" 
 python "$WORKSPACE/src/manage.py" migrate || exit 23
 python "$WORKSPACE/src/manage.py" loaddata "$WORKSPACE/cross7-data/fixtures/app_bootstrap.json"  || exit 23
 python "$WORKSPACE/src/manage.py" load_users || exit 23
