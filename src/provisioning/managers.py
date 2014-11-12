@@ -17,6 +17,7 @@
 
 import datetime
 
+from django.db import transaction
 from django.db.models.fields import related
 from django.utils.functional import cached_property
 
@@ -28,18 +29,22 @@ def create_many_provisionable_related_manager(superclass, rel):
 
         def add(self, *objs, **kw):
             editor = kw.get('editor')
-            for obj in objs:
-                m2m_relation = self.through(**{
-                    self.target_field_name: obj,
-                    self.source_field_name: self.instance,
-                    'start': datetime.datetime.now()
-                    })
-                m2m_relation.save(editor=editor)
+            now = datetime.datetime.now()
+            with transaction.atomic():
+                for obj in objs:
+                    m2m_relation = self.through(**{
+                        self.target_field_name: obj,
+                        self.source_field_name: self.instance,
+                        'start': now
+                        })
+                    m2m_relation.save(editor=editor)
+                    m2m_relation.provision(editor=editor)
 
         def remove(self, *objs, **kw):
             editor = kw.get('editor')
-            for obj in objs:
-                obj.deprovision(editor=editor)
+            with transaction.atomic():
+                for obj in objs:
+                    obj.deprovision(editor=editor)
 
         def current(self):
             filters = {

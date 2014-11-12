@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import datetime
+import logging
 
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -29,12 +30,13 @@ from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
 
 from audit.models import Trackable
-from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User
 
 from fields import ProvisionManyToManyField
 import okta
-import tasks
+
+
+log = logging.getLogger(__name__)
 
 
 class PropertyTable(models.Model):
@@ -144,7 +146,10 @@ class Okta(TenantService):
         client = self.get_client()
         service_user = self.get_service_user(user)
         service_application = client.get(okta.Application, metadata.get('application_id'))
-        service_application.assign(service_user, profile=metadata.get('profile'))
+        try:
+            service_application.assign(service_user, profile=metadata.get('profile'))
+        except Exception, why:
+            log.warn('Error when assigning %s to %s: %s' % (asset, user, why))
 
     @classmethod
     def get_serializer_data(cls, **data):
@@ -281,6 +286,9 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
         self.end = datetime.datetime.now()
         self.save(editor=editor)
 
+    def provision(self, editor=None):
+        raise NotImplementedError
+
     class Meta:
         abstract = True
 
@@ -289,18 +297,12 @@ class UserPlatform(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['platform']
     platform = models.ForeignKey(TenantService)
 
-    @staticmethod
-    def on_user_provision(*args, **kw):
-        editor = kw.get('editor')
-        instance = kw.get('instance')
-        if kw.get('created'):
-            tasks.run_provisioning_for_user(instance.user, editor=editor)
+    def provision(self, editor=None):
+        if not self.is_active:
+            self.activate(editor=editor)
 
-    def activate(self, editor=None):
-        self.status = UserProvisionable.STATUS.active
-        service = self.platform.__subclass__
-        service.activate(self.user)
-        self.save(editor=editor)
+        for us in self.user.software.current():
+            us.provision(editor=editor)
 
 
 class UserDevice(UserProvisionable):
@@ -311,6 +313,12 @@ class UserDevice(UserProvisionable):
 class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
     software = models.ForeignKey(Software)
+
+    def provision(self, editor=None):
+        self.activate(editor=editor)
+        for up in self.user.platforms.current():
+            platform = up.platform.__subclass__
+            platform.assign(self.software, self.user)
 
 
 class UserMobileDataPlan(UserProvisionable):
@@ -323,11 +331,6 @@ User.add_to_class('software', ProvisionManyToManyField(Software, through=UserSof
 User.add_to_class('devices', ProvisionManyToManyField(Device, through=UserDevice))
 User.add_to_class(
     'mobile_data_plans', ProvisionManyToManyField(MobileDataPlan, through=UserMobileDataPlan)
-    )
-
-
-trackable_model_changed.connect(
-    UserPlatform.on_user_provision, dispatch_uid='user_platform_provision', sender=UserPlatform
     )
 
 
