@@ -183,8 +183,8 @@ class UserProvisionSerializer(serializers.ModelSerializer):
         current = manager.current()
         selected = self.object._m2m_data.get(m2m_field_name)
 
-        to_add = [it for it in selected if it not in current]
-        to_remove = [it for it in current if it not in selected]
+        to_add = [it for it in selected if it not in [c.provisioned_item for c in current]]
+        to_remove = [it for it in current if it.provisioned_item not in selected]
 
         manager.remove(*to_remove, editor=editor)
         manager.add(*to_add, editor=editor)

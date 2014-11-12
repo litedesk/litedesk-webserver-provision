@@ -254,7 +254,7 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
 
     @property
     def is_provisionable(self):
-        return self.status != UserProvisionable.STATUS.deprovisioned
+        return self.end is None
 
     @property
     def is_active(self):
@@ -278,7 +278,6 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
         self.save(editor=editor)
 
     def deprovision(self, editor=None):
-        self.status = UserProvisionable.STATUS.deprovisioned
         self.end = datetime.datetime.now()
         self.save(editor=editor)
 

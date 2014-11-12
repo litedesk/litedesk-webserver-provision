@@ -22,15 +22,18 @@ log = logging.getLogger(__name__)
 
 
 def run_provisioning_for_user(user, editor=None):
+    log.debug('Running provisioning for %s' % user)
     for user_platform in user.platforms.current():
         if not user_platform.is_provisionable:
+            log.debug('Platform %s has been already deprovisioned' % user_platform.platform)
             continue
 
         # platforms will be a TenantService object. We need the subclass.
         platform = user_platform.platform.__subclass__
+        log.debug('Is active on platform %s? %s' % (platform, user_platform.is_active))
         if not user_platform.is_active:
             user_platform.activate(editor=editor)
 
         for user_software in user.software.current():
             log.info('Assigning software %s for %s' % (user_software.software, user))
-            platform.assign(user, user_software.software)
+            platform.assign(user_software.software, user)
