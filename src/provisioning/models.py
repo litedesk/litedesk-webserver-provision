@@ -141,7 +141,12 @@ class Okta(TenantService):
         except okta.UserAlreadyActivatedError:
             pass
 
+    def deactivate(self, user):
+        log.warn('Trying to deactivate user %s on Okta, which should never happen' % user)
+        return
+
     def assign(self, asset, user):
+        log.debug('Assigning %s to %s on Okta' % (asset, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         client = self.get_client()
         service_user = self.get_service_user(user)
@@ -150,6 +155,17 @@ class Okta(TenantService):
             service_application.assign(service_user, profile=metadata.get('profile'))
         except Exception, why:
             log.warn('Error when assigning %s to %s: %s' % (asset, user, why))
+
+    def unassign(self, asset, user):
+        log.debug('Removing %s from %s on Okta' % (asset, user))
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
+        client = self.get_client()
+        service_user = self.get_service_user(user)
+        service_application = client.get(okta.Application, metadata.get('application_id'))
+        try:
+            service_application.unassign(service_user)
+        except Exception, why:
+            log.warn('Error when unassigning %s to %s: %s' % (asset, user, why))
 
     @classmethod
     def get_serializer_data(cls, **data):
@@ -178,7 +194,6 @@ class AirWatch(TenantService):
         return None
 
     def get_client(self):
-
         return airwatch.client.Client(
             self.server_url, self.username, self.password, self.api_token
             )
@@ -206,12 +221,29 @@ class AirWatch(TenantService):
         except airwatch.user.UserAlreadyActivatedError:
             pass
 
+    def deactivate(self, user):
+        log.debug('Deactivating user %s on Airwatch' % user)
+        client = self.get_client()
+        service_user = airwatch.user.User.get_remote(client, user.username)
+        if service_user is not None:
+            service_user.deactivate()
+
     def assign(self, asset, user):
+        log.debug('Assigning %s to %s on Airwatch' % (asset, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         service_user = self.get_service_user(user)
         try:
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
+            pass
+
+    def unassign(self, asset, user):
+        log.debug('Removing %s from %s on Airwatch' % (asset, user))
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
+        service_user = self.get_service_user(user)
+        try:
+            service_user.remove_from_group(metadata.get('group_id'))
+        except airwatch.user.UserNotEnrolledError:
             pass
 
     @classmethod
@@ -284,6 +316,7 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
 
     def deprovision(self, editor=None):
         self.end = datetime.datetime.now()
+        self.status = UserProvisionable.STATUS.deprovisioned
         self.save(editor=editor)
 
     def provision(self, editor=None):
@@ -308,7 +341,13 @@ class UserPlatform(UserProvisionable):
             self.activate(editor=editor)
 
         for us in self.user.software.current():
-            us.provision(editor=editor)
+            self.platform.__subclass__.assign(us.software, self.user)
+
+    def deprovision(self, editor=None):
+        platform = self.platform.__subclass__
+        if not platform.is_active_directory_controller:
+            platform.deactivate(self.user)
+        super(UserPlatform, self).deprovision(editor=editor)
 
 
 class UserDevice(UserProvisionable):
@@ -320,11 +359,19 @@ class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
     software = models.ForeignKey(Software)
 
+    def _get_current_platforms(self):
+        return [up.platform.__subclass__ for up in self.user.platforms.current()]
+
     def provision(self, editor=None):
-        self.activate(editor=editor)
-        for up in self.user.platforms.current():
-            platform = up.platform.__subclass__
+
+        for platform in self._get_current_platforms():
             platform.assign(self.software, self.user)
+        self.activate(editor=editor)
+
+    def deprovision(self, editor=None):
+        for platform in self._get_current_platforms():
+            platform.unassign(self.software, self.user)
+        super(UserSoftware, self).deprovision(editor=editor)
 
 
 class UserMobileDataPlan(UserProvisionable):
