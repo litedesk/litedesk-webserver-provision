@@ -16,15 +16,12 @@
 # limitations under the License.
 
 import datetime
-import six
+import logging
 
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.db import models
-from django.db.models.fields import related
-from django.utils.translation import ugettext_lazy as _
-from django.utils.functional import curry, cached_property
 from autoslug import AutoSlugField
 from jsonfield import JSONField
 from model_utils import Choices
@@ -33,111 +30,13 @@ from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
 
 from audit.models import Trackable
-from audit.signals import trackable_model_changed
 from tenants.models import Tenant, TenantService, User
 
+from fields import ProvisionManyToManyField
 import okta
 
 
-def create_many_provisionable_related_manager(superclass, rel):
-    related_manager_class = related.create_many_related_manager(superclass, rel)
-
-    class ProvisionRelatedManager(related_manager_class):
-
-        def add(self, *objs, **kw):
-            editor = kw.get('editor')
-            for obj in objs:
-                m2m_relation = self.through(**{
-                    self.target_field_name: obj,
-                    self.source_field_name: self.instance,
-                    'start': datetime.datetime.now()
-                    })
-                m2m_relation.save(editor=editor)
-
-        def remove(self, *objs, **kw):
-            editor = kw.get('editor')
-            for obj in objs:
-                obj.deprovision(editor=editor)
-
-        def current(self):
-            return self.through._default_manager.filter(end=None)
-
-        def __call__(self, **kwargs):
-            manager = getattr(self.model, kwargs.pop('manager'))
-            manager_class = create_many_provisionable_related_manager(manager.__class__, rel)
-            return manager_class(
-                model=self.model,
-                query_field_name=self.query_field_name,
-                instance=self.instance,
-                symmetrical=self.symmetrical,
-                source_field_name=self.source_field_name,
-                target_field_name=self.target_field_name,
-                reverse=self.reverse,
-                through=self.through,
-                prefetch_cache_name=self.prefetch_cache_name
-            )
-
-    return ProvisionRelatedManager
-
-
-class ProvisionManyRelatedObjectsDescriptor(related.ManyRelatedObjectsDescriptor):
-    @cached_property
-    def related_manager_cls(self):
-        return create_many_provisionable_related_manager(
-            self.related.model._default_manager.__class__,
-            self.related.field.rel
-        )
-
-
-class ProvisionReverseManyRelatedObjectsDescriptor(related.ReverseManyRelatedObjectsDescriptor):
-    @cached_property
-    def related_manager_cls(self):
-        return create_many_provisionable_related_manager(
-            self.field.rel.to._default_manager.__class__,
-            self.field.rel
-        )
-
-
-class ProvisionManyToManyField(models.ManyToManyField):
-    description = _('Many-to-many relationship with provisionable objects')
-
-    def contribute_to_class(self, cls, name):
-        related_to_self = (self.rel.to == "self" or self.rel.to == cls._meta.object_name)
-        if self.rel.symmetrical and related_to_self:
-            self.rel.related_name = "%s_rel_+" % name
-
-        super(models.ManyToManyField, self).contribute_to_class(cls, name)
-
-        if not self.rel.through and not cls._meta.abstract and not cls._meta.swapped:
-            self.rel.through = related.create_many_to_many_intermediary_model(self, cls)
-
-        setattr(cls, self.name, ProvisionReverseManyRelatedObjectsDescriptor(self))
-
-        self.m2m_db_table = curry(self._get_m2m_db_table, cls._meta)
-
-        if isinstance(self.rel.through, six.string_types):
-            def resolve_through_model(field, model, cls):
-                field.rel.through = model
-            related.add_lazy_relation(cls, self, self.rel.through, resolve_through_model)
-
-    def contribute_to_related_class(self, cls, related):
-        if not self.rel.is_hidden() and not related.model._meta.swapped:
-            setattr(
-                cls,
-                related.get_accessor_name(),
-                ProvisionManyRelatedObjectsDescriptor(related)
-                )
-
-        self.m2m_column_name = curry(self._get_m2m_attr, related, 'column')
-        self.m2m_reverse_name = curry(self._get_m2m_reverse_attr, related, 'column')
-
-        self.m2m_field_name = curry(self._get_m2m_attr, related, 'name')
-        self.m2m_reverse_field_name = curry(self._get_m2m_reverse_attr, related, 'name')
-
-        get_m2m_rel = curry(self._get_m2m_attr, related, 'rel')
-        self.m2m_target_field_name = lambda: get_m2m_rel().field_name
-        get_m2m_reverse_rel = curry(self._get_m2m_reverse_attr, related, 'rel')
-        self.m2m_reverse_target_field_name = lambda: get_m2m_reverse_rel().field_name
+log = logging.getLogger(__name__)
 
 
 class PropertyTable(models.Model):
@@ -247,7 +146,10 @@ class Okta(TenantService):
         client = self.get_client()
         service_user = self.get_service_user(user)
         service_application = client.get(okta.Application, metadata.get('application_id'))
-        service_application.assign(service_user, profile=metadata.get('profile'))
+        try:
+            service_application.assign(service_user, profile=metadata.get('profile'))
+        except Exception, why:
+            log.warn('Error when assigning %s to %s: %s' % (asset, user, why))
 
     @classmethod
     def get_serializer_data(cls, **data):
@@ -346,7 +248,7 @@ class TenantServiceAsset(PropertyTable):
 
 
 class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
-    STATUS = Choices('staged', 'pending', 'active', 'suspended', 'deprovisioned')
+    STATUS = Choices('staged', 'active', 'suspended', 'deprovisioned')
     TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'status_changed']
 
     user = models.ForeignKey(User)
@@ -357,7 +259,11 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
 
     @property
     def is_provisionable(self):
-        return self.status != UserProvisionable.STATUS.deprovisioned
+        return self.end is None
+
+    @property
+    def is_active(self):
+        return self.status == UserProvisionable.STATUS.active
 
     @property
     def provisioned_item(self):
@@ -377,9 +283,11 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
         self.save(editor=editor)
 
     def deprovision(self, editor=None):
-        self.status = UserProvisionable.STATUS.deprovisioned
         self.end = datetime.datetime.now()
         self.save(editor=editor)
+
+    def provision(self, editor=None):
+        raise NotImplementedError
 
     class Meta:
         abstract = True
@@ -389,15 +297,18 @@ class UserPlatform(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['platform']
     platform = models.ForeignKey(TenantService)
 
-    @staticmethod
-    def on_user_provision(*args, **kw):
-        instance = kw.get('instance')
-        user = instance.user
-        # platforms will be a TenantService object. We need the subclass.
-        service = instance.platform.__subclass__
-        service.activate(user)
-        for software in user.software.all():
-            service.assign(software, user)
+    def activate(self, editor=None):
+        platform = self.platform.__subclass__
+        platform.activate(self.user)
+        self.status = UserProvisionable.STATUS.active
+        self.save(editor=editor)
+
+    def provision(self, editor=None):
+        if not self.is_active:
+            self.activate(editor=editor)
+
+        for us in self.user.software.current():
+            us.provision(editor=editor)
 
 
 class UserDevice(UserProvisionable):
@@ -409,13 +320,11 @@ class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
     software = models.ForeignKey(Software)
 
-    @staticmethod
-    def on_user_provision(*args, **kw):
-        instance = kw.get('instance')
-        user = instance.user
-        software = instance.software
-        for service in user.platforms.select_subclasses():
-            service.assign(software, user)
+    def provision(self, editor=None):
+        self.activate(editor=editor)
+        for up in self.user.platforms.current():
+            platform = up.platform.__subclass__
+            platform.assign(self.software, self.user)
 
 
 class UserMobileDataPlan(UserProvisionable):
@@ -428,16 +337,6 @@ User.add_to_class('software', ProvisionManyToManyField(Software, through=UserSof
 User.add_to_class('devices', ProvisionManyToManyField(Device, through=UserDevice))
 User.add_to_class(
     'mobile_data_plans', ProvisionManyToManyField(MobileDataPlan, through=UserMobileDataPlan)
-    )
-
-
-trackable_model_changed.connect(
-    UserPlatform.on_user_provision, dispatch_uid='user_platform_provision', sender=UserPlatform
-    )
-
-
-trackable_model_changed.connect(
-    UserSoftware.on_user_provision, dispatch_uid='user_software_provision', sender=UserSoftware
     )
 
 
