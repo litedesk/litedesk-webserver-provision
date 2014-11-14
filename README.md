@@ -33,7 +33,7 @@
  2. Create user entry on "auth.user". This is from "Authentication"
  section, not from the "Tenant" one.
  3. From the tenant section, create a "Active Directory" with the our
- server credentials, and a "tenant" to represent a company that uuses
+ server credentials, and a "tenant" to represent a company that uses
  it.
  4. Back in the command line, run "./src/manage.py load_users"
  
