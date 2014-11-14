@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{{ site.name }} - Activate your {{ service.name }} account</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="format-detection" content="telephone=no" />
+    <style type="text/css">  /* RESET */  #outlook a {padding:0;} body {width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; margin:0; padding:0; mso-line-height-rule:exactly;}  table td { border-collapse: collapse; }  .ExternalClass {width:100%;}  .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;}  table td {border-collapse: collapse;}  /* IMG */  img {outline:none; text-decoration:none; -ms-interpolation-mode: bicubic;}  a img {border:none;}  /* Becoming responsive */  @media only screen and (max-device-width: 480px) {  table[id="container_div"] {max-width: 480px !important;}  table[id="container_table"], table[class="image_container"], table[class="image-group-contenitor"] {width: 100% !important; min-width: 320px !important;}  table[class="image-group-contenitor"] td, table[class="mixed"] td, td[class="mix_image"], td[class="mix_text"], td[class="table-separator"], td[class="section_block"] {display: block !important;width:100% !important;}  table[class="image_container"] img, td[class="mix_image"] img, table[class="image-group-contenitor"] img {width: 100% !important;}  table[class="image_container"] img[class="natural-width"], td[class="mix_image"] img[class="natural-width"], table[class="image-group-contenitor"] img[class="natural-width"] {width: auto !important;}  a[class="button-link justify"] {display: block !important;width:auto !important;}  td[class="table-separator"] br {display: none;}  td[class="cloned_td"]  table[class="image_container"] {width: 100% !important; min-width: 0 !important;} } table[class="social_wrapp"] {width: auto;} </style>
+  </head>
+  <body bgcolor="#62b4c9">
+    <table id="container_div" style="text-align:center; background-color:#62b4c9; border-collapse: collapse" align="center" bgcolor="#62b4c9" width="100%" cellpadding="0" cellspacing="0" border="0">  <tr>
+      <td align="center">
+        <br />
+        <table id="container_wrapper" cellpadding="0" cellspacing="0" border="0">
+          <tbody>
+            <tr>
+              <td>
+                <table id="container_table" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-collapse: collapse; min-width: 600px;" width="600">
+                  <tbody>
+                    <tr>
+                      <td valign="top" bgcolor="#ffffff">
+                        <table cellpadding="14" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(52, 55, 59);" bgcolor="#34373b">
+                          <tbody>
+                            <tr valign="top">
+                              <td valign="top" style="line-height: 130%; color: rgb(255, 255, 255);">
+                                <div style="color: rgb(255, 255, 255); text-align: center;">
+                                  <strong style="color: rgb(255, 255, 255);">
+                                    <span style="font-family: 'trebuchet ms', helvetica, sans-serif; color: rgb(255, 255, 255); line-height: 130%;">
+                                      {{ site.name }}
+                                    </span>
+                                  </strong>
+                                </div>
+                                <div style="color: rgb(255, 255, 255); text-align: center;">
+                                  <strong style="color: rgb(255, 255, 255);">
+                                    <span style="font-size: 18px; color: rgb(255, 255, 255); line-height: 130%;">
+                                      <span style="font-family: 'trebuchet ms', helvetica, sans-serif; color: rgb(255, 255, 255); line-height: 130%;">
+                                        <span style="color: rgb(255, 255, 255); line-height: 130%;">
+                                          <span style="line-height: 130%;">Welcome to {{ service.name }}!</span>
+                                        </span>
+                                      </span>
+                                    </span>
+                                  </strong>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td valign="top" bgcolor="#ffffff">
+                        {% block welcome_message %}
+                      {% endblock %}
+                        <table cellpadding="13" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
+                          <tbody>
+                            <tr valign="top">
+                              <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121);">
+                                {% block access_information_message %}
+                              {% endblock %}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td valign="top" bgcolor="#ffffff">
+                        <table cellpadding="30" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
+                          <tbody>
+                            <tr valign="top">
+                              <td valign="top" style="line-height: 130%; color: rgb(255, 255, 255);">
+                                <div style="color: rgb(102, 102, 102);">
+                                  <span style="font-size: 12px; line-height: 130%;">
+                                    <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 130%;">
+                                      If you experience difficulties accessing your account, you can send a help request to your system administrator using this link:
+                                      <a target="_blank" href="{{ service.portal_help_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ service.portal_help_url }}</a>
+                                      <br /><br />
+                                      This is an automatically generated message by {{ site.name }}. Replies are not monitored or answered.
+                                    </span>
+                                  </span>
+                                  <br />
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <br />
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

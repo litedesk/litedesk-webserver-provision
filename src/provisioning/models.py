@@ -18,10 +18,10 @@
 import datetime
 import logging
 
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import models
+from django.template.loader import render_to_string
 from autoslug import AutoSlugField
 from jsonfield import JSONField
 from model_utils import Choices
@@ -126,13 +126,18 @@ class Okta(TenantService):
             template_parameters = {
                 'user': user,
                 'service': self,
-                'activation_url': activation_response.get('activationUrl')
+                'activation_url': activation_response.get('activationUrl'),
+                'site': settings.SITE
             }
-            text_msg = render_to_string('mail/text/activation.tmpl.txt', template_parameters)
-            html_msg = render_to_string('mail/html/activation.tmpl.html', template_parameters)
+            text_msg = render_to_string(
+                'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
+                )
+            html_msg = render_to_string(
+                'provisioning/mail/html/activation_okta.tmpl.html', template_parameters
+                )
 
             send_mail(
-                settings.SITE.get('ACTIVATION_EMAIL_SUBJECT'),
+                '%s - Welcome to %s' % (settings.SITE.get('name'), self.name),
                 text_msg,
                 settings.DEFAULT_FROM_EMAIL,
                 [user.email],
@@ -187,11 +192,14 @@ class AirWatch(TenantService):
 
     @property
     def portal_url(self):
-        return self.server_url
+        url = self.server_url
+        if url.endswith('/'):
+            url = url[:-1]
+        return url
 
     @property
     def portal_help_url(self):
-        return None
+        return '%s/AirWatch/HelpSystem/en/Default.htm' % self.portal_url
 
     def get_client(self):
         return airwatch.client.Client(
@@ -216,8 +224,29 @@ class AirWatch(TenantService):
         service_user = self.get_service_user(user)
         if service_user is None:
             service_user = self.register(user)
+
         try:
+            title = '%s - Welcome to Airwatch' % settings.SITE.get('name')
             service_user.activate()
+            template_parameters = {
+                'user': user,
+                'service': self,
+                'site': settings.SITE
+            }
+            text_msg = render_to_string(
+                'provisioning/mail/text/activation_airwatch.tmpl.txt', template_parameters
+                )
+            html_msg = render_to_string(
+                'provisioning/mail/html/activation_airwatch.tmpl.html', template_parameters
+                )
+
+            send_mail(
+                title,
+                text_msg,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                html_message=html_msg
+            )
         except airwatch.user.UserAlreadyActivatedError:
             pass
 
@@ -254,6 +283,9 @@ class AirWatch(TenantService):
             'server_url': data.get('server_url'),
             'group_id': data.get('group_id')
             }
+
+    class Meta:
+        verbose_name = 'AirWatch'
 
 
 class MobileIron(TenantService):
