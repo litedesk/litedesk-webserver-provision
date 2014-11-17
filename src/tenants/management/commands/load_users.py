@@ -28,8 +28,11 @@ class Command(BaseCommand):
     help = 'For all tenants with AD credentials, load the user table'
 
     def handle(self, *fixture_labels, **options):
+        print 'handle'
         user_class = get_user_model()
+        print 'user model grabbed'
         admin = user_class.objects.filter(is_superuser=True)[0]
+        print 'i have admin user'
         for ad in models.ActiveDirectory.objects.all():
             print ad
             session = ad.make_session()
