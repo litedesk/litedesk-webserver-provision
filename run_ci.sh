@@ -4,6 +4,8 @@
 stop_server(){
   pkill -f "manage.py runserver" || return 0
 }
+
+stop_server
 virtualenv "$WORKSPACE/env"
 source "$WORKSPACE/env/bin/activate"
 
@@ -24,7 +26,7 @@ python "$WORKSPACE/src/manage.py" loaddata "$WORKSPACE/cross7-data/fixtures/app_
 echo "after loaddata"
 python "$WORKSPACE/src/manage.py" load_users || exit 23
 echo "after load_users"
-stop_server
+
 echo "after stopserver"
 /usr/local/sbin/daemonize -E BUILD_ID=dontKillMe "$WORKSPACE/env/bin/python" "$WORKSPACE/src/manage.py" runserver
 #python $PY_PROFILE "$WORKSPACE/src/manage.py" taskname || exit 23
