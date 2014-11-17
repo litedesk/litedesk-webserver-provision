@@ -21,8 +21,10 @@ rm -f "$WORKSPACE/app.db" 2>/dev/null
 cp "$WORKSPACE/src/litedesk_service_api/local_settings.py.sample" "$WORKSPACE/src/litedesk_service_api/local_settings.py" 
 python "$WORKSPACE/src/manage.py" migrate || exit 23
 python "$WORKSPACE/src/manage.py" loaddata "$WORKSPACE/cross7-data/fixtures/app_bootstrap.json"  || exit 23
+echo "after loaddata"
 python "$WORKSPACE/src/manage.py" load_users || exit 23
+echo "after load_users"
 stop_server
-python "$WORKSPACE/src/manage.py" runserver || exit 23
-
+echo "after stopserver"
+nohup python "$WORKSPACE/src/manage.py" runserver &
 #python $PY_PROFILE "$WORKSPACE/src/manage.py" taskname || exit 23
