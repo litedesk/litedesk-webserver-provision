@@ -73,9 +73,26 @@ class Software(Asset):
 class Device(Asset):
     image = models.ImageField(null=True, blank=True)
 
+    def can_be_managed_by(self, service):
+        return True
+
+    @property
+    def __subclass__(self):
+        if 'chrome' in self.name.lower():
+            self.__class__ = ChromeDevice
+        return self
+
 
 class MobileDataPlan(Asset):
     pass
+
+
+class ChromeDevice(Device):
+    def can_be_managed_by(self, service):
+        return service.type == TenantService.PLATFORM_TYPE_CHOICES.web
+
+    class Meta:
+        proxy = True
 
 
 class TenantAsset(PropertyTable):
@@ -386,6 +403,60 @@ class UserDevice(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['device']
     device = models.ForeignKey(Device)
 
+    def _get_current_platforms(self):
+        return [up.platform.__subclass__ for up in self.user.platforms.current()]
+
+    def _get_email_template_parameters(self, service):
+        device = self.device.__subclass__
+        if isinstance(device, ChromeDevice):
+            return {
+                'user': self.user,
+                'service': service,
+                'site': settings.SITE,
+                'device': device
+                }
+        return None
+
+    def _get_email_template(self, service, format='html'):
+        extension = {
+            'text': 'txt',
+             'html': 'html'
+            }.get(format, format)
+        template_name = None
+        if isinstance(self.device.__subclass__, ChromeDevice):
+            template_name = 'activation_chromebook'
+
+        return template_name and 'provisioning/mail/%s/%s.tmpl.%s' % (
+            format, template_name, extension
+            )
+
+    def provision(self, editor=None):
+        if not self.is_active:
+            self.activate(editor=editor)
+
+        device = self.device.__subclass__
+        for platform in self._get_current_platforms():
+            if device.can_be_managed_by(platform):
+                self._on_device_provision(platform)
+
+    def _on_device_provision(self, service):
+        html_template = self._get_email_template(service, format='html')
+        text_template = self._get_email_template(service, format='text')
+        if not (html_template or text_template):
+            return
+
+        template_parameters = self._get_email_template_parameters(service)
+
+        text_msg = render_to_string(text_template, template_parameters)
+        html_msg = render_to_string(html_template, template_parameters)
+
+        send_mail(
+                '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
+                text_msg,
+                settings.DEFAULT_FROM_EMAIL,
+                [self.user.email],
+                html_message=html_msg
+            )
 
 class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']

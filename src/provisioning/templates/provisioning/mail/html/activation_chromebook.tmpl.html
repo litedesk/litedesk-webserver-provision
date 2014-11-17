@@ -1,0 +1,39 @@
+{% extends "provisioning/mail/html/activation_base.tmpl.html" %}
+
+{% block welcome_header %}
+  Welcome to Google!
+{% endblock %}
+
+{% block welcome_message %}
+  <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%; color: rgb(118, 118, 121); ">
+    Hi {{ user.first_name }}, <br />
+
+
+    your organization is providing you with a {{ device.name }}.
+
+    To access your device, you need to use your Google account in
+    addition to your Okta account. If you did not already have a
+    Google account, it has been created for you.
+  </span>
+
+{% endblock %}
+
+{% block access_information_message %}
+
+<div style="text-align: center;">
+  <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
+    <strong>YOUR SYSTEM ADMINISTRATOR HAS PROVISIONED YOU A {{ device.name | upper }}.</strong> <br />
+
+    <div>YOUR GOOGLE ACCOUNT IS</div>
+    <a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a>
+  </span>
+</div>
+
+  Please follow these steps to add your user to your {{ device.name }} that is managed by {{ user.tenant.email_domain }}:
+  <ol>
+    <li>Sign in with your Google account email, leave the password empty.</li>
+    <li>Sign in with your Okta user credentials.</li>
+    <li>Re-enter your Okta password to complete sign-in.</li>
+  </ol>
+
+{% endblock %}

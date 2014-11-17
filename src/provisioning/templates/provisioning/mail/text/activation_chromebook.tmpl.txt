@@ -1,0 +1,14 @@
+Hi {{ user.first_name }},
+
+your organization is providing you with a {{ device.name }}. To access your device, you need to use your Google account in addition to your Okta account. If you did not already have a Google account, it has been created for you.
+
+Your Google account is: {{ user.tenant_email }}
+
+Please follow these steps to add your user to your {{ device.name }} that is managed by {{ user.tenant.domain }}:
+1. Sign in with your Google account email, leave the password empty.
+2. Sign in with your Okta user credentials.
+3. Re-enter your Okta password to complete sign-in.
+
+If you experience difficulties accessing your account, you can send a help request to your system administrator using this link: {{ service.portal_help_url }}
+
+This is an automatically generated message by {{ site.name }}. Replies are not monitored or answered.

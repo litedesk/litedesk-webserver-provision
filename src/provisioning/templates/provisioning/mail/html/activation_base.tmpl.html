@@ -34,14 +34,10 @@
                                   </strong>
                                 </div>
                                 <div style="color: rgb(255, 255, 255); text-align: center;">
-                                  <strong style="color: rgb(255, 255, 255);">
-                                    <span style="font-size: 18px; color: rgb(255, 255, 255); line-height: 130%;">
-                                      <span style="font-family: 'trebuchet ms', helvetica, sans-serif; color: rgb(255, 255, 255); line-height: 130%;">
-                                        <span style="color: rgb(255, 255, 255); line-height: 130%;">
-                                          <span style="line-height: 130%;">Welcome to {{ service.name }}!</span>
-                                        </span>
-                                      </span>
-                                    </span>
+                                  <strong style="font-family: 'trebuchet ms', helvetica, sans-serif;  font-size: 18px; color: white; line-height: 130%;">
+                                    {% block welcome_header %}
+                                      Welcome to {{ service.name }}!
+                                    {% endblock %}
                                   </strong>
                                 </div>
                               </td>
@@ -52,14 +48,22 @@
                     </tr>
                     <tr>
                       <td valign="top" bgcolor="#ffffff">
-                        {% block welcome_message %}
-                      {% endblock %}
+                        <table cellpadding="30">
+                          <tr><td>
+                              {% block welcome_message %}
+                              {% endblock %}
+                          </td></tr>
+                        </table>
                         <table cellpadding="13" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
                           <tbody>
                             <tr valign="top">
                               <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121);">
-                                {% block access_information_message %}
-                              {% endblock %}
+                                <table cellpadding="15">
+                                  <tr><td>
+                                    {% block access_information_message %}
+                                    {% endblock %}
+                                  </td></tr>
+                                </table>
                               </td>
                             </tr>
                           </tbody>
