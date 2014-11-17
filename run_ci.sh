@@ -26,5 +26,5 @@ python "$WORKSPACE/src/manage.py" load_users || exit 23
 echo "after load_users"
 stop_server
 echo "after stopserver"
-python "$WORKSPACE/src/manage.py" runserver &
+daemonize -E BUILD_ID=dontKillMe python "$WORKSPACE/src/manage.py" runserver
 #python $PY_PROFILE "$WORKSPACE/src/manage.py" taskname || exit 23
