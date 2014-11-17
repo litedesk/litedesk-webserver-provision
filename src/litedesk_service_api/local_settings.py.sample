@@ -20,7 +20,7 @@ SECRET_KEY='change-this-and-make-it-a-secret'
 # SITE is a variable that contains per-instance, customizable parameters.
 SITE = {
     'ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to Okta',
-    'AIRWATCH_ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to AirWatch'
+    'AIRWATCH_ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to AirWatch',
     'CHROMEBOOK_ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to Google'
     }
 
