@@ -31,12 +31,19 @@ class Command(BaseCommand):
         user_class = get_user_model()
         admin = user_class.objects.filter(is_superuser=True)[0]
         for ad in models.ActiveDirectory.objects.all():
+            print ad
             session = ad.make_session()
             for company in Company.search(session, query='(ou=%s)' % ad.ou):
+                print company.ou
                 for remote_user in company.users:
+                    print remote_user.s_am_account_name
                     username = remote_user.s_am_account_name
                     local_user = models.User.objects.filter(username=username)
                     if local_user.exists():
+                        print 'before merge'
                         models.User.merge(local_user.get(), remote_user, editor=admin)
+                        print 'after merge'
                     else:
+                        print 'before load'
                         models.User.load(remote_user, editor=admin, tenant=ad.tenant)
+                        print 'after load'
