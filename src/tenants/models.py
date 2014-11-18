@@ -76,7 +76,7 @@ class ActiveDirectory(models.Model):
 
     @property
     def full_url(self):
-        return 'ldap://%s' % self.url
+        return 'ldaps://%s' % self.url
 
     @property
     def dn(self):
