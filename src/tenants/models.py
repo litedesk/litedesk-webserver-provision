@@ -86,7 +86,7 @@ class ActiveDirectory(models.Model):
         return ','.join(params)
 
     def make_session(self):
-        return Session(self.full_url, self.dn, self.password)
+        return Session(self.full_url, self.dn, self.password, True)
 
     def find_company(self):
         session = self.make_session()
