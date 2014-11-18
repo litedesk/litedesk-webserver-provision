@@ -140,7 +140,7 @@ class Okta(TenantService):
             for n in xrange(8)
         ])
         remote_user.set_password(password)
-        return password
+        return remote_user, password
 
     def activate(self, user):
         client = self.get_client()
@@ -150,8 +150,10 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
-            password = self.set_random_ad_password(user)
+            ad_user, password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
+            ad_user.activate()
+            ad_user.save()
             template_parameters = {
                 'user': user,
                 'service': self,
