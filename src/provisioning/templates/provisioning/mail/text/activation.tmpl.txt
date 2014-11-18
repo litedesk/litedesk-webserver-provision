@@ -7,7 +7,7 @@ Your sytem administrator has created an Okta user account for you. Click the fol
 {{ activation_url }}
 
 Your username is: {{ user.tenant_email }}
-Your one time password is: {{ password }}
+Your one-time Windows password is: {{ password }}
 Your organization's sign-in page is: {{ service.portal_url }}
 
 If you experience difficulties accessing your account, you can send a help request to your system administrator using this link: {{ service.portal_help_url }}
