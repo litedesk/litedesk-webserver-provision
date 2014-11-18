@@ -46,8 +46,8 @@ urlpatterns += patterns(
 
 
 urlpatterns += patterns(
-    'accounting.views',
-    url(r'^api/accounting/', include('accounting.urls')),
+    'catalog.views',
+    url(r'^api/catalog/', include('catalog.urls')),
 )
 
 

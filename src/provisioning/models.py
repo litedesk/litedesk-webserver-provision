@@ -330,7 +330,7 @@ class TenantServiceAsset(PropertyTable):
 
 class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
     STATUS = Choices('staged', 'active', 'suspended', 'deprovisioned')
-    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'status_changed']
+    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'contract', 'status_changed']
 
     user = models.ForeignKey(User)
 
@@ -420,8 +420,8 @@ class UserDevice(UserProvisionable):
     def _get_email_template(self, service, format='html'):
         extension = {
             'text': 'txt',
-             'html': 'html'
-            }.get(format, format)
+            'html': 'html'
+        }.get(format, format)
         template_name = None
         if isinstance(self.device.__subclass__, ChromeDevice):
             template_name = 'activation_chromebook'
@@ -457,6 +457,7 @@ class UserDevice(UserProvisionable):
                 [self.user.email],
                 html_message=html_msg
             )
+
 
 class UserSoftware(UserProvisionable):
     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']

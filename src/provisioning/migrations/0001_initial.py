@@ -25,6 +25,7 @@ class Migration(migrations.Migration):
                 ('group_id', models.CharField(max_length=80)),
             ],
             options={
+                'verbose_name': 'AirWatch',
             },
             bases=('tenants.tenantservice',),
         ),
@@ -129,7 +130,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
                 ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'pending', b'pending'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
+                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
                 ('device', models.ForeignKey(to='provisioning.Device')),
                 ('user', models.ForeignKey(to='tenants.User')),
@@ -147,7 +148,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
                 ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'pending', b'pending'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
+                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
                 ('mobile_data_plan', models.ForeignKey(to='provisioning.MobileDataPlan')),
                 ('user', models.ForeignKey(to='tenants.User')),
@@ -165,7 +166,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
                 ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'pending', b'pending'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
+                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
                 ('platform', models.ForeignKey(to='tenants.TenantService')),
                 ('user', models.ForeignKey(to='tenants.User')),
@@ -183,7 +184,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
                 ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'pending', b'pending'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
+                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
                 ('software', models.ForeignKey(to='provisioning.Software')),
                 ('user', models.ForeignKey(to='tenants.User')),
@@ -200,5 +201,14 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='tenantasset',
             unique_together=set([('tenant', 'asset')]),
+        ),
+        migrations.CreateModel(
+            name='ChromeDevice',
+            fields=[
+            ],
+            options={
+                'proxy': True,
+            },
+            bases=('provisioning.device',),
         ),
     ]

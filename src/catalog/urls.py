@@ -16,22 +16,13 @@
 # limitations under the License.
 
 
-from django.contrib import admin
+from django.conf.urls import url, patterns
 
-import models
-
-
-class OfferAdmin(admin.ModelAdmin):
-    search_fields = ('tenant')
-    list_display = ('tenant', 'status', 'currency')
-    list_filter = ('tenant', 'status', 'currency')
+import views
 
 
-@admin.register(models.Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
-    list_filter = ('tenant', 'status', 'period')
-
-
-@admin.register(models.Product)
-class Product(admin.ModelAdmin):
-    pass
+urlpatterns = patterns(
+    'catalog.views',
+    url(r'^offers$', views.OfferListView.as_view(), name='offer-list'),
+    url(r'^offer/(?P<pk>\d+)$', views.OfferView.as_view(), name='offer-detail'),
+    )

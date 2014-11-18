@@ -33,6 +33,7 @@ OUR_APPS = (
     'accounting',
     'authentication',
     'audit',
+    'catalog',
     'provisioning',
     'tenants'
     )

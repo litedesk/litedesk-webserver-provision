@@ -8,25 +8,24 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('tenants', '0001_initial'),
-        ('contenttypes', '0001_initial'),
-        ('accounting', '0001_initial'),
+        ('accounting', '0002_contract_offer'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='order',
-            name='user',
-            field=models.ForeignKey(to='tenants.User'),
+            model_name='contract',
+            name='tenant',
+            field=models.ForeignKey(to='tenants.Tenant'),
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='offer',
-            name='item_type',
-            field=models.ForeignKey(to='contenttypes.ContentType'),
+            model_name='charge',
+            name='contract',
+            field=models.ForeignKey(to='accounting.Contract'),
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='offer',
+            model_name='charge',
             name='tenant',
             field=models.ForeignKey(to='tenants.Tenant'),
             preserve_default=True,
