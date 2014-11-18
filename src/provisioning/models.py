@@ -29,7 +29,7 @@ from jsonfield import JSONField
 from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
-from litedesk.lib import airwatch, active_directory
+from litedesk.lib import airwatch
 
 from audit.models import Trackable
 from tenants.models import Tenant, TenantService, User
