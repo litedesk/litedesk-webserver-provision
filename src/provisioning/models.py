@@ -17,6 +17,8 @@
 
 import datetime
 import logging
+import random
+import string
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -27,7 +29,7 @@ from jsonfield import JSONField
 from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
-from litedesk.lib import airwatch
+from litedesk.lib import airwatch, active_directory
 
 from audit.models import Trackable
 from tenants.models import Tenant, TenantService, User
@@ -131,6 +133,15 @@ class Okta(TenantService):
             pass
         return self.get_service_user(user)
 
+    def set_random_ad_password(self, user):
+        remote_user = user.get_remote()
+        password = ''.join([
+            random.choice(string.ascii_letters + string.digits)
+            for n in xrange(8)
+        ])
+        remote_user.set_password(password)
+        return password
+
     def activate(self, user):
         client = self.get_client()
         try:
@@ -139,12 +150,14 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
+            password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
             template_parameters = {
                 'user': user,
                 'service': self,
                 'activation_url': activation_response.get('activationUrl'),
-                'site': settings.SITE
+                'site': settings.SITE,
+                'password': password
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
