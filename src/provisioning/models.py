@@ -345,7 +345,7 @@ class TenantServiceAsset(PropertyTable):
 
 class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
     STATUS = Choices('staged', 'active', 'suspended', 'deprovisioned')
-    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'contract', 'status_changed']
+    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'status_changed']
 
     user = models.ForeignKey(User)
 
