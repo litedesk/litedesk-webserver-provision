@@ -6,6 +6,7 @@ stop_server(){
 }
 
 stop_server
+echo "after stopserver"
 find src -name *.pyc | xargs rm
 virtualenv "$WORKSPACE/env"
 source "$WORKSPACE/env/bin/activate"
@@ -28,6 +29,6 @@ echo "after loaddata"
 python "$WORKSPACE/src/manage.py" load_users || exit 23
 echo "after load_users"
 
-echo "after stopserver"
 /usr/local/sbin/daemonize -E BUILD_ID=dontKillMe "$WORKSPACE/env/bin/python" "$WORKSPACE/src/manage.py" runserver
+echo "started server"
 #python $PY_PROFILE "$WORKSPACE/src/manage.py" taskname || exit 23
