@@ -6,6 +6,7 @@ stop_server(){
 }
 
 stop_server
+find src -name *.pyc | xargs rm
 virtualenv "$WORKSPACE/env"
 source "$WORKSPACE/env/bin/activate"
 
