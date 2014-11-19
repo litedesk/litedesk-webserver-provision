@@ -153,17 +153,16 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
-            #ad_user, password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
+            ad_user, password = self.set_random_ad_password(user)
             #ad_user.activate()
             #ad_user.save()
-            expire_password_response = client.expire_password(service_user, True)
             template_parameters = {
                 'user': user,
                 'service': self,
                 'activation_url': activation_response.get('activationUrl'),
                 'site': settings.SITE,
-                'password': expire_password_response.get('tempPassword')
+                'password': password
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
