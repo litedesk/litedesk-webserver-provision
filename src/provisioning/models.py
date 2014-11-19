@@ -267,7 +267,7 @@ class AirWatch(TenantService):
         if not os.path.exists(image_file_path):
             if not os.path.exists(image_dir):
                 os.mkdir(image_dir)
-            data = self.QRCODE_TEMPLATE.format(self.server_url, self.group_id)
+            data = self.QRCODE_TEMPLATE.format(server_domain, self.group_id)
             image = qrcode.make(data, image_factory=PymagingImage)
             with open(image_file_path, 'w') as image_file:
                 image.save(image_file)
