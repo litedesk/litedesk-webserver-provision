@@ -153,16 +153,17 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
-            ad_user, password = self.set_random_ad_password(user)
+            #ad_user, password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
-            ad_user.activate()
-            ad_user.save()
+            #ad_user.activate()
+            #ad_user.save()
+            expire_password_response = client.expire_password(user, True)
             template_parameters = {
                 'user': user,
                 'service': self,
                 'activation_url': activation_response.get('activationUrl'),
                 'site': settings.SITE,
-                'password': password
+                'password': expire_password_response.get('tempPassword')
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
@@ -260,7 +261,7 @@ class AirWatch(TenantService):
 
     @property
     def qrcode(self):
-        server_domain = self.server_url.replace('https:', '').replace('http:', '').strip('/')
+        server_domain = self.server_url.replace('https://as', 'ds').replace('http://as', 'ds').strip('/')
         image_dir = os.path.join(self.QRCODE_ROOT_DIR, server_domain)
         image_file_name = '{0}.png'.format(self.group_id)
         image_file_path = os.path.join(image_dir, image_file_name)

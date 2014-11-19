@@ -174,3 +174,10 @@ class Client(object):
         response = self._make_request(url, method='POST', params=params)
         check_for_error(response, 'ALREADY_ACTIVATED', UserAlreadyActivatedError)
         return response.json()
+
+    def expire_password(self, user, tmp_passwd=False):
+        url = 'users/{0}/lifecycle/expire_password?tempPassword={1}'.format(user.id, 'true' if tmp_passwd else 'false')
+        response = self._make_request(url, method='POST')
+        check_for_error(response)
+        return response.json()
+
