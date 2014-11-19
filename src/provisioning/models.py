@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import datetime
 import logging
 import random
@@ -30,6 +31,8 @@ from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
+import qrcode
+from qrcode.image.pure import PymagingImage
 
 from audit.models import Trackable
 from tenants.models import Tenant, TenantService, User
@@ -216,6 +219,9 @@ class Okta(TenantService):
 
 class AirWatch(TenantService):
     PLATFORM_TYPE = 'mobile'
+    QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
+    QRCODE_ROOT_URL = settings.MEDIA_URL + 'airwatch_qrcodes/'
+    QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
 
     username = models.CharField(max_length=80)
     password = models.CharField(max_length=1000)
@@ -252,6 +258,22 @@ class AirWatch(TenantService):
         except airwatch.user.UserAlreadyRegisteredError:
             return self.get_service_user(user)
 
+    @property
+    def qrcode(self):
+        server_domain = self.server_url.replace('https://', '')
+        image_dir = os.path.join(self.QRCODE_ROOT_DIR, server_domain)
+        image_file_name = '{0}.png'.format(self.group_id)
+        image_file_path = os.path.join(image_dir, image_file_name)
+        if not os.path.exists(image_file_path):
+            if not os.path.exists(image_dir):
+                os.mkdir(image_dir)
+            data = self.QRCODE_TEMPLATE.format(self.server_url, self.group_id)
+            image = qrcode.make(data, image_factory=PymagingImage)
+            with open(image_file_path, 'w') as image_file:
+                image.save(image_file)
+        image_url = self.QRCODE_ROOT_URL + server_domain + '/' + image_file_name
+        return image_url
+
     def activate(self, user):
         service_user = self.get_service_user(user)
         if service_user is None:
@@ -263,7 +285,8 @@ class AirWatch(TenantService):
             template_parameters = {
                 'user': user,
                 'service': self,
-                'site': settings.SITE
+                'site': settings.SITE,
+                'qr_code': self.qrcode
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_airwatch.tmpl.txt', template_parameters

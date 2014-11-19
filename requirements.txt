@@ -14,6 +14,10 @@ pillow
 python-dateutil
 python-memcached
 python-money
+qrcode
+
+git+https://github.com/ojii/pymaging.git#egg=pymaging
+git+https://github.com/ojii/pymaging-png.git#egg=pymaging-png
 
 git+https://github.com/litedesk/litedesk-lib-active_directory
 git+https://github.com/litedesk/litedesk-lib-airwatch

@@ -46,9 +46,6 @@ DATABASES = {
     }
 }
 
-# Only for development, in case you need django to serve the static
-# files from the front-end code as well.
-
 STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
 
 _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
@@ -63,6 +60,9 @@ EXTRA_STATIC_ROOTS = (
     ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
     ('img', os.path.join(_FRONT_END_ROOT, 'img')),
 )
+
+MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
+MEDIA_URL = '/media/'
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
