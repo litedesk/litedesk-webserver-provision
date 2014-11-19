@@ -155,8 +155,8 @@ class Okta(TenantService):
         try:
             activation_response = client.activate_user(service_user, send_email=False)
             ad_user, password = self.set_random_ad_password(user)
-            #ad_user.activate()
-            #ad_user.save()
+            ad_user._raw_update(pwd_last_set=0)
+            ad_user.save()
             template_parameters = {
                 'user': user,
                 'service': self,
