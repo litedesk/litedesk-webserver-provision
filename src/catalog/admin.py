@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright 2014, Deutsche Telekom AG - Laboratories (T-Labs)
 #
@@ -22,15 +22,15 @@ import models
 
 
 class OfferAdmin(admin.ModelAdmin):
-    list_display = ('item', 'status', 'currency')
+    list_display = ('item', 'status', 'price', 'setup_price', 'currency')
     list_filter = ('item_type', 'status', 'currency')
 
 
 @admin.register(models.Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
+class SubscriptionAdmin(OfferAdmin):
     list_filter = ('item_type', 'status', 'period', 'currency')
 
 
 @admin.register(models.Product)
-class Product(admin.ModelAdmin):
+class Product(OfferAdmin):
     pass

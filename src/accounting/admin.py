@@ -15,15 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rest_framework import serializers
 
+from django.contrib import admin
+
+from audit.admin import TrackableModelAdminMixin
 import models
 
 
-class OfferSerializer(serializers.ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='offer-detail')
+@admin.register(models.Charge)
+class ChargeAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'code', 'tenant', 'item', 'amount', 'currency', 'amount_paid',
+        'created', 'due_on', 'paid_on', 'status'
+        )
+    list_filter = ('tenant', 'status',)
+    search_fields = ('code', 'due_on')
 
-    class Meta:
-        model = models.Offer
-        fields = ('url', 'name', 'currency', 'price', 'setup_price', 'status')
-        read_only_fields = ('name', 'asset', 'currency', )
+
+@admin.register(models.Contract)
+class ContractAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'active', 'offer', 'item')
+    list_filter = ('tenant', 'active')

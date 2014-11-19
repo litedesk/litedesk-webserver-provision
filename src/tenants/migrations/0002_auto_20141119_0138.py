@@ -77,13 +77,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tenant',
             name='members',
-            field=models.ManyToManyField(related_name=b'peers', to=settings.AUTH_USER_MODEL, blank=True),
+            field=models.ManyToManyField(related_name='peers', to=settings.AUTH_USER_MODEL, blank=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='tenant',
             name='primary_contact',
-            field=models.OneToOneField(related_name=b'tenant', to=settings.AUTH_USER_MODEL),
+            field=models.OneToOneField(related_name='tenant', to=settings.AUTH_USER_MODEL),
             preserve_default=True,
         ),
     ]

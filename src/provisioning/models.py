@@ -23,6 +23,7 @@ import string
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
+from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from autoslug import AutoSlugField
 from jsonfield import JSONField
@@ -31,6 +32,7 @@ from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
 
+from accounting.models import Contract
 from audit.models import Trackable
 from tenants.models import Tenant, TenantService, User
 
@@ -371,6 +373,12 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
         return getattr(self, extra_attr)
 
     def activate(self, editor=None):
+        contract = Contract.available.filter(
+            tenant=self.user.tenant,
+            offer__item_type=ContentType.objects.get_for_model(self.provisioned_item),
+            offer__object_id=self.provisioned_item.pk
+            )
+        if contract.exists(): contract.get().execute(editor)
         self.status = UserProvisionable.STATUS.active
         self.save(editor=editor)
 
@@ -386,6 +394,9 @@ class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
     def provision(self, editor=None):
         raise NotImplementedError
 
+    def __unicode__(self):
+        return '%s provision for user %s' % (self.provisioned_item, self.user)
+
     class Meta:
         abstract = True
 
@@ -397,8 +408,7 @@ class UserPlatform(UserProvisionable):
     def activate(self, editor=None):
         platform = self.platform.__subclass__
         platform.activate(self.user)
-        self.status = UserProvisionable.STATUS.active
-        self.save(editor=editor)
+        super(UserPlatform, self).activate(editor=editor)
 
     def provision(self, editor=None):
         if not self.is_active:
@@ -466,12 +476,12 @@ class UserDevice(UserProvisionable):
         html_msg = render_to_string(html_template, template_parameters)
 
         send_mail(
-                '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
-                text_msg,
-                settings.DEFAULT_FROM_EMAIL,
-                [self.user.email],
-                html_message=html_msg
-            )
+            '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
+            text_msg,
+            settings.DEFAULT_FROM_EMAIL,
+            [self.user.email],
+            html_message=html_msg
+        )
 
 
 class UserSoftware(UserProvisionable):
@@ -482,7 +492,6 @@ class UserSoftware(UserProvisionable):
         return [up.platform.__subclass__ for up in self.user.platforms.current()]
 
     def provision(self, editor=None):
-
         for platform in self._get_current_platforms():
             platform.assign(self.software, self.user)
         self.activate(editor=editor)
