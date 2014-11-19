@@ -178,6 +178,6 @@ class Client(object):
     def expire_password(self, user, tmp_passwd=False):
         url = 'users/{0}/lifecycle/expire_password?tempPassword={1}'.format(user.id, 'true' if tmp_passwd else 'false')
         response = self._make_request(url, method='POST')
-        check_for_error(response)
+        response.raise_for_status()
         return response.json()
 
