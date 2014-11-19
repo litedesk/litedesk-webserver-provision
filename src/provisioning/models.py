@@ -157,7 +157,7 @@ class Okta(TenantService):
             activation_response = client.activate_user(service_user, send_email=False)
             #ad_user.activate()
             #ad_user.save()
-            expire_password_response = client.expire_password(user, True)
+            expire_password_response = client.expire_password(service_user, True)
             template_parameters = {
                 'user': user,
                 'service': self,
