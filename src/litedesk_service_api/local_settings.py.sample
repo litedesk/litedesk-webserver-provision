@@ -64,8 +64,9 @@ EXTRA_STATIC_ROOTS = (
     ('img', os.path.join(_FRONT_END_ROOT, 'img')),
 )
 
-MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
+MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
 MEDIA_URL = '/media/'
+ROOT_URL = 'http://example.com'
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
