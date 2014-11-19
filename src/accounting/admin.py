@@ -18,19 +18,21 @@
 
 from django.contrib import admin
 
+from audit.admin import TrackableModelAdminMixin
 import models
 
 
-class OfferAdmin(admin.ModelAdmin):
-    list_display = ('item', 'status', 'price', 'setup_price', 'currency')
-    list_filter = ('item_type', 'status', 'currency')
+@admin.register(models.Charge)
+class ChargeAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'code', 'tenant', 'item', 'amount', 'currency', 'amount_paid',
+        'created', 'due_on', 'paid_on', 'status'
+        )
+    list_filter = ('tenant', 'status',)
+    search_fields = ('code', 'due_on')
 
 
-@admin.register(models.Subscription)
-class SubscriptionAdmin(OfferAdmin):
-    list_filter = ('item_type', 'status', 'period', 'currency')
-
-
-@admin.register(models.Product)
-class Product(OfferAdmin):
-    pass
+@admin.register(models.Contract)
+class ContractAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'active', 'offer', 'item')
+    list_filter = ('tenant', 'active')
