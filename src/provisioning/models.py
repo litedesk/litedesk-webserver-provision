@@ -260,7 +260,7 @@ class AirWatch(TenantService):
 
     @property
     def qrcode(self):
-        server_domain = self.server_url.replace('https://', '').replace('http://', '')
+        server_domain = self.server_url.replace('https:', '').replace('http:', '').strip('/')
         image_dir = os.path.join(self.QRCODE_ROOT_DIR, server_domain)
         image_file_name = '{0}.png'.format(self.group_id)
         image_file_path = os.path.join(image_dir, image_file_name)
@@ -271,7 +271,7 @@ class AirWatch(TenantService):
             image = qrcode.make(data, image_factory=PymagingImage)
             with open(image_file_path, 'w') as image_file:
                 image.save(image_file)
-        image_url = self.QRCODE_ROOT_URL + server_domain + image_file_name
+        image_url = self.QRCODE_ROOT_URL + server_domain + '/' + image_file_name
         return image_url
 
     def activate(self, user):
