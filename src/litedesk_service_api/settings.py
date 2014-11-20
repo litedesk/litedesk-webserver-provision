@@ -16,6 +16,8 @@
 # limitations under the License.
 
 # Application definition
+import os
+
 DJANGO_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -87,6 +89,7 @@ EXTRA_STATIC_ROOTS = (
     ('img', os.path.join(_FRONT_END_ROOT, 'img')),
 )
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
 MEDIA_URL = '/media/'
@@ -117,7 +120,7 @@ PROVISIONABLE_SERVICES = [
 from local_settings import *
 
 
-### Logging Configuration ###
+# Logging Configuration
 LOGGING = {
     'version': 1,
     'formatters': {

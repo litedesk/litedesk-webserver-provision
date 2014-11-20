@@ -24,9 +24,9 @@ TEMPLATE_DEBUG = True
 ALLOWED_HOSTS = []
 
 
-ROOT_URL = 'http://example.com'
 SITE = {
-    'name': 'Example Site'
+    'name': 'Example Site',
+    'host_url': 'http://example.com'
 }
 
 EMAIL_USE_TLS = True
