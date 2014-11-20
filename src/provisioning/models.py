@@ -73,6 +73,10 @@ class Software(Asset):
     mobile = models.BooleanField(default=False)
     desktop = models.BooleanField(default=False)
 
+    @property
+    def supported_platforms(self):
+        return [p for p in ['web', 'mobile', 'desktop'] if getattr(self, p)]
+
 
 class Device(Asset):
     image = models.ImageField(null=True, blank=True)
@@ -291,18 +295,22 @@ class AirWatch(TenantService):
         if service_user is not None:
             service_user.deactivate()
 
-    def assign(self, asset, user):
-        log.debug('Assigning %s to %s on Airwatch' % (asset, user))
-        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
+    def assign(self, software, user):
+        if self.type not in software.supported_platforms: return
+
+        log.debug('Assigning %s to %s on Airwatch' % (software, user))
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
         service_user = self.get_service_user(user)
         try:
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
 
-    def unassign(self, asset, user):
-        log.debug('Removing %s from %s on Airwatch' % (asset, user))
-        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
+    def unassign(self, software, user):
+        if self.type not in software.supported_platforms: return
+
+        log.debug('Removing %s from %s on Airwatch' % (software, user))
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
         service_user = self.get_service_user(user)
         try:
             service_user.remove_from_group(metadata.get('group_id'))
