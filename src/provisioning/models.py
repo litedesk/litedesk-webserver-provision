@@ -18,8 +18,6 @@
 import os
 import datetime
 import logging
-import random
-import string
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -136,15 +134,6 @@ class Okta(TenantService):
             pass
         return self.get_service_user(user)
 
-    def set_random_ad_password(self, user):
-        remote_user = user.get_remote()
-        password = ''.join([
-            random.choice(string.ascii_letters + string.digits)
-            for n in xrange(8)
-        ])
-        remote_user.set_password(password)
-        return remote_user, password
-
     def activate(self, user):
         client = self.get_client()
         try:
@@ -154,9 +143,7 @@ class Okta(TenantService):
 
         try:
             activation_response = client.activate_user(service_user, send_email=False)
-            ad_user, password = self.set_random_ad_password(user)
-            ad_user._raw_update(pwd_last_set=0)
-            ad_user.save()
+            password = user.get_remote().set_one_time_password()
             template_parameters = {
                 'user': user,
                 'service': self,
