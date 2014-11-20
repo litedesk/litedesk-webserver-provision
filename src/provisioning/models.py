@@ -298,7 +298,7 @@ class AirWatch(TenantService):
         service_user = airwatch.user.User.get_remote(client, user.username)
         if service_user is not None:
             service_user.deactivate()
-            for tenantserviceasset in self.tenantserviceasset_set.objects.all():
+            for tenantserviceasset in self.tenantserviceasset_set:
                 self.unassign(tenantserviceasset.asset, user)
 
     def assign(self, asset, user):
