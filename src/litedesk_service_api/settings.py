@@ -73,26 +73,17 @@ import os
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 LOG_DIR = os.path.join(BASE_DIR, 'log')
 
-_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'example-front', 'ui'))
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
 STATICFILES_DIRS = [
     os.path.abspath(os.path.join(BASE_DIR, 'static')),
-    _FRONT_END_ROOT
-    ]
+]
 
-
-EXTRA_STATIC_ROOTS = (
-    ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
-    ('img', os.path.join(_FRONT_END_ROOT, 'img')),
-)
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
-MEDIA_URL = '/media/'
 
 # Databases
 
