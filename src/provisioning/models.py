@@ -207,7 +207,7 @@ class Okta(TenantService):
 class AirWatch(TenantService):
     PLATFORM_TYPE = 'mobile'
     QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
-    QRCODE_ROOT_URL = settings.ROOT_URL + settings.MEDIA_URL + 'airwatch_qrcodes/'
+    QRCODE_ROOT_URL = settings.SITE.get('host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
     QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
 
     username = models.CharField(max_length=80)

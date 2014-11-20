@@ -16,6 +16,8 @@
 # limitations under the License.
 
 # Application definition
+import os
+
 DJANGO_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -69,6 +71,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 
 
 # REST-framework
@@ -88,7 +91,7 @@ except ImportError:
     from deployment_settings import *
 
 
-### Logging Configuration ###
+# Logging Configuration
 LOGGING = {
     'version': 1,
     'formatters': {
