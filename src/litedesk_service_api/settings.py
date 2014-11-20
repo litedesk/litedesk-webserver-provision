@@ -64,11 +64,43 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = False
 
+# Some important directories
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import os
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+LOG_DIR = os.path.join(BASE_DIR, 'log')
+
+_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'example-front', 'ui'))
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
+STATICFILES_DIRS = [
+    os.path.abspath(os.path.join(BASE_DIR, 'static')),
+    _FRONT_END_ROOT
+    ]
+
+
+EXTRA_STATIC_ROOTS = (
+    ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
+    ('img', os.path.join(_FRONT_END_ROOT, 'img')),
+)
 STATIC_URL = '/static/'
+
+MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
+MEDIA_URL = '/media/'
+
+# Databases
+
+# Database
+# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'app.db')
+    }
+}
 
 
 # REST-framework
@@ -82,10 +114,7 @@ PROVISIONABLE_SERVICES = [
     'provisioning.models.AirWatch'
     ]
 
-try:
-    from local_settings import *
-except ImportError:
-    from deployment_settings import *
+from local_settings import *
 
 
 ### Logging Configuration ###

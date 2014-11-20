@@ -18,47 +18,12 @@
 SECRET_KEY='change-this-and-make-it-a-secret'
 
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-LOG_DIR = os.path.join(BASE_DIR, 'log')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
 ALLOWED_HOSTS = []
 
 
-# Database
-# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'app.db')
-    }
-}
-
-# Only for development, in case you need django to serve the static
-# files from the front-end code as well.
-
-if os.environ.get('JENKINS_HOME'):
-    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..','..', '_cross7','workspace', 'ui'))    
-else:
-    _FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
-
-STATICFILES_DIRS = [
-    os.path.abspath(os.path.join(BASE_DIR, 'static')),
-    _FRONT_END_ROOT
-    ]
-
-
-EXTRA_STATIC_ROOTS = (
-    ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
-    ('img', os.path.join(_FRONT_END_ROOT, 'img')),
-)
-
-MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
-MEDIA_URL = '/media/'
 ROOT_URL = 'http://example.com'
 SITE = {
     'name': 'Example Site'
