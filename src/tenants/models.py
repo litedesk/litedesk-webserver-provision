@@ -236,7 +236,7 @@ class User(Trackable, Synchronizable):
             'first_name': 'given_name',
             'last_name': 'sn',
             'email': 'mail',
-            'display_name': 'display_name'
+            'display_name': 'display_name','mobile_phone_number':'telephone_number'
         }
     STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
 
@@ -274,13 +274,15 @@ class User(Trackable, Synchronizable):
                     s_am_account_name=self.username,
                     mail=self.email,
                     display_name=self.display_name or self.get_default_display_name(),
-                    user_principal_name=self.full_username
+                    user_principal_name=self.full_username,
+                    telephone_number = self.mobile_phone_number
                     )
             else:
                 remote_user.mail = self.email
                 remote_user.display_name = self.display_name
                 remote_user.given_name = self.first_name
                 remote_user.sn = self.last_name
+                remote_user.telephone_number = self.mobile_phone_number
             remote_user.save()
 
     def pull(self):
