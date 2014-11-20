@@ -236,8 +236,9 @@ class User(Trackable, Synchronizable):
             'first_name': 'given_name',
             'last_name': 'sn',
             'email': 'mail',
-            'display_name': 'display_name','mobile_phone_number':'telephone_number'
-        }
+            'display_name': 'display_name',
+            'mobile_phone_number': 'telephone_number'
+            }
     STATUS = Choices('staged', 'pending', 'active', 'suspended', 'disabled')
 
     tenant = models.ForeignKey(Tenant)
@@ -275,7 +276,7 @@ class User(Trackable, Synchronizable):
                     mail=self.email,
                     display_name=self.display_name or self.get_default_display_name(),
                     user_principal_name=self.full_username,
-                    telephone_number = self.mobile_phone_number
+                    telephone_number=self.mobile_phone_number
                     )
             else:
                 remote_user.mail = self.email
