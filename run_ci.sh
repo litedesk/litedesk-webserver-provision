@@ -60,7 +60,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'litedesk.opensource@gmail.com'
-EMAIL_HOST_PASSWORD = 't0ps3cr3t'
+EMAIL_HOST_PASSWORD = '$LITEDESK_GMAIL_PASSWORD'
 
 EOT
 
