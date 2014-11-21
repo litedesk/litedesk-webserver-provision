@@ -31,10 +31,6 @@ ERROR_RESPONSES = {
         }
     }
 
-APP_AUTH_SSO='app.auth.sso'
-APP_DELEGATED_OUTBOUND='app.auth.delegated.outbound'
-
-
 def check_for_error(response, key, exception):
     try:
         response.raise_for_status()
@@ -118,7 +114,6 @@ class Client(object):
             kw['data'] = json.dumps(data)
 
         full_url = 'https://%s.okta.com/api/v1/%s' % (self.domain, url)
-
         return {
             'GET': self._session.get,
             'PUT': self._session.put,
@@ -184,8 +179,11 @@ class Client(object):
         response.raise_for_status()
         return response.json()
 
-    def list_events(self, object_type=None):
-        pass
+    def last_sso_event(self, user, app):
+        params = {'filter': 'action.objectType eq "app.auth.sso" and target.id eq "%s" and target.id eq "%s"' % (user, app) }
+        response = self._make_request('events', method='GET', params=params)
+        response.raise_for_status()
+        return response.json()[-1]
 
     def user_applications(self, user):
         response = self._make_request('apps', method='GET', params={'filter': 'user.id eq "%s"' % (user.id)})

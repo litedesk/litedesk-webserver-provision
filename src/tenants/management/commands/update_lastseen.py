@@ -18,6 +18,7 @@
 
 from django.core.management.base import BaseCommand
 from provisioning import models
+from provisioning import okta
 from optparse import make_option
 
 
@@ -33,22 +34,33 @@ class Command(BaseCommand):
         tenant = models.Tenant.objects.get(pk=options['tenant'])
 
         self.stdout.write("Get Okta users from Okta.")
-        okta = models.Okta.objects.get(tenant = options['tenant'])
-        okta_user = okta.get_users()
+        okta_service = models.Okta.objects.get(tenant = options['tenant'])
+        okta_user = okta_service.get_users()
 
         user_dict = {}
         for user in okta_user:
             self.stdout.write('%s - %s' % (user['profile']['login'], user['lastLogin']))
-            user_dict[user['profile']['login']] = user['lastLogin']
+            user_dict[user['profile']['login']] = { 'last_login': user['lastLogin'], 'id': user['id'] }
 
         self.stdout.write("")
         self.stdout.write("Get provisioned Okta services.")
-        platform_items = models.UserPlatform.objects.filter(user__tenant = options['tenant']).filter()
 
         #Update Okta login
-        for okta in platform_items:
-            if (okta.platform.__subclass__.name == 'Okta'):
-                okta_username = '%s@%s' % (okta.user.username, tenant.email_domain)
-                self.stdout.write(okta_username)
-                if okta_username in user_dict:
-                    self.stdout.write("Found")
+        okta_item = models.Okta.objects.get(tenant = tenant)
+        okta_provisionables = okta_item.userplatform_set.all()
+        for it in okta_provisionables:
+            it_username = '%s@%s' % (it.user.username, tenant.email_domain)
+            if it_username in user_dict:
+                self.stdout.write('%s Okta -> %s' % (it_username, user_dict[it_username]['last_login']))
+
+        #Get Okta application SSO events
+        self.stdout.write("")
+        self.stdout.write("Get Okta SSO events.")
+        okta_client = okta_service.get_client()
+
+        usersoftwares = models.UserSoftware.objects.filter(user__tenant = tenant)
+        for usersoftware in usersoftwares:
+            oktatenantservice = usersoftware.software.tenantserviceasset_set.get(service = okta_service)
+            event = okta_client.last_sso_event(user_dict[usersoftware.user.tenant_email]['id'], oktatenantservice.get('application_id'))
+            self.stdout.write('%s %s -> %s' % (usersoftware.user.tenant_email, usersoftware.software, event['published']))
+
