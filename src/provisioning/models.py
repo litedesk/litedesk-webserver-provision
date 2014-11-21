@@ -431,7 +431,8 @@ class UserPlatform(UserProvisionable):
             self.activate(editor=editor)
 
         for us in self.user.software.current():
-            self.platform.__subclass__.assign(us.software, self.user)
+            if self.platform.__subclass__.type in us.software.platform_types:
+                self.platform.__subclass__.assign(us.software, self.user)
 
     def deprovision(self, editor=None):
         platform = self.platform.__subclass__
