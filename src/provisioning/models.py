@@ -72,6 +72,16 @@ class Software(Asset):
     mobile = models.BooleanField(default=False)
     desktop = models.BooleanField(default=False)
 
+    @property
+    def platform_types(self):
+        return (
+            platform for platform in {
+                'web': self.web,
+                'mobile': self.mobile,
+                'desktop': self.desktop
+            } if platform
+        )
+
 
 class Device(Asset):
     image = models.ImageField(null=True, blank=True)
@@ -493,9 +503,14 @@ class UserSoftware(UserProvisionable):
     def _get_current_platforms(self):
         return [up.platform.__subclass__ for up in self.user.platforms.current()]
 
-    def provision(self, editor=None):
+    def _get_current_platforms_for_this_software(self):
+        return (
+            platform for platform in self._get_current_platforms()
+            if platform.type in self.software.platform_types
+        )
 
-        for platform in self._get_current_platforms():
+    def provision(self, editor=None):
+        for platform in self._get_current_platforms_for_this_software():
             platform.assign(self.software, self.user)
         self.activate(editor=editor)
 
