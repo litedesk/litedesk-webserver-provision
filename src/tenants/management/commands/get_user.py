@@ -20,6 +20,8 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 from provisioning import okta
 from provisioning.models import Okta
+from litedesk.lib.airwatch import user
+from provisioning.models import AirWatch
 import json
 
 
@@ -27,16 +29,29 @@ class Command(BaseCommand):
     help = 'Get information about a user.'
     option_list = BaseCommand.option_list + (
         make_option('--username',
-            default="alastor",
-            help='Username to find. Default="alastor"'),
+            default="bruce.wayne",
+            help='Username to find. Default="bruce.wayne"'),
         )
 
     def handle(self, *args, **options):
         result = {'okta': {}, 'airwatch': {}}
         okta_service = Okta.objects.all().get()
         client = okta.Client(okta_service.domain, okta_service.api_token)
-        user = client.search(okta.User, options["username"])[0]
+        okta_user = client.search(okta.User, options["username"].split('.')[0])[0]
         # self.stdout.write("got the Okta user with the id")
-        result['okta']['id'] = user.id
-        result['okta']['status'] = user.status
+        result['okta']['id'] = okta_user.id
+        result['okta']['status'] = okta_user.status
+        
+        airwatch_service = AirWatch.objects.all().get()
+        airwatch_client = airwatch_service.get_client()
+        airwatch_user = user.User.get_remote(airwatch_client, options["username"])
+        result['airwatch']['id'] = airwatch_user.id
+        result['airwatch']['Status'] = airwatch_user.Status
         self.stdout.write(json.dumps(result))
+
+
+
+
+
+
+
