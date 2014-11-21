@@ -31,6 +31,9 @@ ERROR_RESPONSES = {
         }
     }
 
+APP_AUTH_SSO='app.auth.sso'
+APP_DELEGATED_OUTBOUND='app.auth.delegated.outbound'
+
 
 def check_for_error(response, key, exception):
     try:
@@ -181,3 +184,10 @@ class Client(object):
         response.raise_for_status()
         return response.json()
 
+    def list_events(self, object_type=None):
+        pass
+
+    def user_applications(self, user):
+        response = self._make_request('apps', method='GET', params={'filter': 'user.id eq "%s"' % (user.id)})
+        response.raise_for_status()
+        return response.json()
