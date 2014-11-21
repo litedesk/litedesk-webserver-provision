@@ -18,7 +18,7 @@
 
 from django.contrib import admin
 
-from audit.admin import TrackableModelAdminMixin
+# from audit.admin import TrackableModelAdminMixin
 import models
 
 
@@ -67,5 +67,6 @@ class TenantServiceAssetAdmin(admin.ModelAdmin):
 
 @admin.register(models.UserProvisionable)
 class UserProvisionableAdmin(admin.ModelAdmin):
-    list_display = ('user', 'offer', )
+    list_display = ('user', 'item', )
+    list_filter = ('item_type', )
     search_fields = ('user__username', )

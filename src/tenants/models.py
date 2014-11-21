@@ -245,6 +245,7 @@ class User(Trackable, Synchronizable):
     mobile_phone_number = models.CharField(max_length=16, null=True, blank=True)
     username = models.CharField(max_length=100, editable=False)
     email = models.EmailField(null=True)
+    services = models.ManyToManyField(TenantService)
     status = StatusField()
 
     @property
@@ -254,12 +255,6 @@ class User(Trackable, Synchronizable):
     @property
     def full_username(self):
         return '%s@%s' % (self.username, self.tenant.active_directory.url)
-
-    @property
-    def current_services(self):
-        supported_services = [s.model_class for s in TenantService.get_available()]
-        service_types = ContentType.objects.get_for_models(*supported_services).values()
-        return self.userprovisionable_set.filter(offer__item_type__in=service_types)
 
     def get_remote(self):
         return self.tenant.active_directory.find_user(self.username)
@@ -296,7 +291,7 @@ class User(Trackable, Synchronizable):
     def get_provisioned_items(self, item_class=None):
         qs = self.userprovisionable_set.all()
         if item_class is not None:
-            qs = qs.filter(offer__item_type=ContentType.objects.get_for_model(item_class))
+            qs = qs.filter(item_type=ContentType.objects.get_for_model(item_class))
         return qs
 
     def save(self, *args, **kw):

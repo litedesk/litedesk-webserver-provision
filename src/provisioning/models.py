@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
 import logging
 import random
 import string
@@ -23,12 +22,14 @@ import string
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from autoslug import AutoSlugField
 from jsonfield import JSONField
+from model_utils import Choices
 from model_utils.managers import InheritanceManager
-from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
+from model_utils.models import TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
 
 from accounting.models import Contract
@@ -73,19 +74,20 @@ class TenantProvisionable(PropertyTable):
     offer = models.ForeignKey(Offer)
 
 
-class UserProvisionable(TimeStampedModel):
+class UserProvisionable(TimeStampedModel, StatusModel):
+    STATUS = Choices('staged', 'processing', 'active')
     user = models.ForeignKey(User)
-    offer = models.ForeignKey(Offer)
+    service = models.ForeignKey(TenantService)
+    item_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    item = GenericForeignKey('item_type', 'object_id')
 
     @property
     def tenant(self):
         return self.user.tenant
 
-    def provision(self, editor=None):
-        self.item.provision(self.user, editor=editor)
-
     def __unicode__(self):
-        return '%s provision for user %s' % (self.offer.item, self.user)
+        return '%s provision for user %s on %s' % (self.item, self.user, self.service)
 
 
 # class UserPlatform(UserProvisionable):
@@ -130,8 +132,6 @@ class UserProvisionable(TimeStampedModel):
 
 # class UserMobileDataPlan(UserProvisionable):
 #     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['mobile_data_plan']
-
-
 
 
 class Asset(TimeStampedModel, Provisionable):
@@ -230,6 +230,7 @@ class Device(Asset):
             [user.email],
             html_message=html_msg
         )
+
 
 class MobileDataPlan(Asset):
     pass
