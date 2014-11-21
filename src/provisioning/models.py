@@ -455,8 +455,9 @@ class UserDevice(UserProvisionable):
                 'user': self.user,
                 'service': service,
                 'site': settings.SITE,
-                'device': device
-                }
+                'device': device,
+                'include_additional_information_message': True
+            }
         return None
 
     def _get_email_template(self, service, format='html'):
