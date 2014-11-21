@@ -75,11 +75,11 @@ class Software(Asset):
     @property
     def platform_types(self):
         return (
-            platform for platform in {
+            platform for platform, activated in {
                 'web': self.web,
                 'mobile': self.mobile,
                 'desktop': self.desktop
-            } if platform
+            }.viewitems() if activated
         )
 
 
