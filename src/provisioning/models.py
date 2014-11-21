@@ -478,7 +478,7 @@ class UserDevice(UserProvisionable):
         html_msg = render_to_string(html_template, template_parameters)
 
         send_mail(
-                '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
+                '%s - Welcome to Google' % (settings.SITE.get('name')),
                 text_msg,
                 settings.DEFAULT_FROM_EMAIL,
                 [self.user.email],

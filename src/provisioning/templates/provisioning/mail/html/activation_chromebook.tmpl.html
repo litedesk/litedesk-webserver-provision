@@ -24,16 +24,18 @@
   <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
     <strong>YOUR SYSTEM ADMINISTRATOR HAS PROVISIONED YOU A {{ device.name | upper }}.</strong> <br />
 
-    <div>YOUR GOOGLE ACCOUNT IS</div>
+    <br />YOUR GOOGLE ACCOUNT IS<br />
     <a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a>
   </span>
 </div>
 
-  Please follow these steps to add your user to your {{ device.name }} that is managed by {{ user.tenant.email_domain }}:
-  <ol>
-    <li>Sign in with your Google account email, leave the password empty.</li>
-    <li>Sign in with your Okta user credentials.</li>
-    <li>Re-enter your Okta password to complete sign-in.</li>
-  </ol>
+{% endblock %}
+
+{% block additional_information_message %}
+
+Please follow these steps to add your user to your {{ device.name }} that is managed by <a href="#" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant.email_domain }}</a>:<br>
+1. Sign in with your Google account email, leave the password empty.<br>
+2. Sign in with your Okta user credentials.<br>
+3. Re-enter your Okta password to complete sign-in.
 
 {% endblock %}
