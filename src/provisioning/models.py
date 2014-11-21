@@ -136,6 +136,10 @@ class Okta(TenantService):
         client = self.get_client()
         return client.get(okta.User, user.tenant_email)
 
+    def get_users(self):
+        client = self.get_client()
+        return client.get_users()
+
     def register(self, user):
         client = self.get_client()
         try:
@@ -488,7 +492,7 @@ class UserDevice(UserProvisionable):
         html_msg = render_to_string(html_template, template_parameters)
 
         send_mail(
-                '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
+                '%s - Welcome to Google' % (settings.SITE.get('name')),
                 text_msg,
                 settings.DEFAULT_FROM_EMAIL,
                 [self.user.email],
