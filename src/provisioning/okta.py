@@ -140,7 +140,7 @@ class Client(object):
         application.assign_to_user(user, profile=profile)
 
     def get_users(self):
-        response = self._make_request('users')
+        response = self._make_request('users', method='GET')
         response.raise_for_status()
         return response.json()
 

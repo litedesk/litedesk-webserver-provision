@@ -126,6 +126,10 @@ class Okta(TenantService):
         client = self.get_client()
         return client.get(okta.User, user.tenant_email)
 
+    def get_users(self):
+        client = self.get_client()
+        return client.get_users()
+
     def register(self, user):
         client = self.get_client()
         try:
