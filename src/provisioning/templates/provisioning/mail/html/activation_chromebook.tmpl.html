@@ -21,19 +21,20 @@
 {% block access_information_message %}
 
 <div style="text-align: center;">
-  <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
-    <strong>YOUR SYSTEM ADMINISTRATOR HAS PROVISIONED YOU A {{ device.name | upper }}.</strong> <br />
-
-    <br />YOUR GOOGLE ACCOUNT IS<br />
-    <a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a>
-  </span>
+    <span style="font-size: 14px; line-height: 150%;">
+      <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
+        <strong>YOUR SYSTEM ADMINISTRATOR HAS PROVISIONED YOU A {{ device.name | upper }}.<br>
+        </strong>
+        <br>YOUR GOOGLE ACCOUNT IS<br><a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a>
+      </span>
+    </span>
 </div>
 
 {% endblock %}
 
 {% block additional_information_message %}
 
-Please follow these steps to add your user to your {{ device.name }} that is managed by <a href="#" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant.email_domain }}</a>:<br>
+Please follow these steps to add your user to your {{ device.name }} that is managed by <a href="#" style="text-decoration: none; color: rgb(102, 102, 102);">{{ user.tenant.email_domain }}</a>:<br>
 1. Sign in with your Google account email, leave the password empty.<br>
 2. Sign in with your Okta user credentials.<br>
 3. Re-enter your Okta password to complete sign-in.
