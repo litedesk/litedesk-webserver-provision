@@ -36,8 +36,16 @@ def make_new_service(service_type, tenant, api_token, active, *args, **kw):
     return klass.make(tenant, api_token, active, **kw)
 
 
-class ModelRelatedChoiceField(serializers.PrimaryKeyRelatedField):
+class ProvisionableAssetChoiceField(serializers.RelatedField):
     many = True
+
+    def __init__(self, *args, **kw):
+        self.asset_class = kw.pop('asset', models.Asset)
+        super(ProvisionableAssetChoiceField, self).__init__(*args, **kw)
+
+    def initialize(self, parent, field_name):
+        super(serializers.RelatedField, self).initialize(parent, field_name)
+        self.queryset = self.get_choices_queryset(self.parent.object)
 
     def from_native(self, data):
         queryset = self.get_choices_queryset(self.parent.object)
@@ -53,14 +61,14 @@ class ModelRelatedChoiceField(serializers.PrimaryKeyRelatedField):
             raise ValidationError(msg)
 
     def field_to_native(self, obj, field_name):
-        field = self.source or field_name
-        queryset = getattr(obj, field)
-        if not hasattr(queryset, 'current'):
-            raise AttributeError(
-                '%s does not have %s to list current provisioned items' % (obj, field)
-                )
+        return [self.to_native(it.pk) for it in [
+            up.offer.item for up in obj.get_provisioned_items(item_class=self.asset_class)
+            ]]
 
-        return [self.to_native(item.provisioned_item.pk) for item in queryset.current()]
+    def field_from_native(self, data, files, field_name, reverted_data):
+        ids = data.getlist(field_name)
+        reverted_data[field_name] = self.asset_class.objects.filter(id__in=ids)
+        return reverted_data
 
 
 # We cheat a little bit on the fact that both auth.models.User
@@ -70,7 +78,10 @@ class ModelRelatedChoiceField(serializers.PrimaryKeyRelatedField):
 # available for selection. If for some reason one user can access
 # more than one tenant, we should review them.
 
-class UserPlatformChoiceField(ModelRelatedChoiceField):
+class UserPlatformChoiceField(ProvisionableAssetChoiceField):
+
+    def __init__(self, *args, **kw):
+        super(UserPlatformChoiceField, self).__init__(asset=TenantService, *args, **kw)
 
     def _get_choices(self):
         if not self.parent: return []
@@ -80,14 +91,13 @@ class UserPlatformChoiceField(ModelRelatedChoiceField):
     def get_choices_queryset(self, obj):
         return obj.tenant.tenantservice_set.filter(is_active=True)
 
+    def field_to_native(self, obj, field_name):
+        return [self.to_native(it.offer.item.pk) for it in obj.current_services]
+
     choices = property(_get_choices, serializers.PrimaryKeyRelatedField._set_choices)
 
 
-class UserAssetChoiceField(ModelRelatedChoiceField):
-    def __init__(self, *args, **kw):
-        self.asset_class = kw.pop('asset', models.Asset)
-        super(UserAssetChoiceField, self).__init__(*args, **kw)
-
+class UserAssetChoiceField(ProvisionableAssetChoiceField):
     def _get_choices(self):
         if not self.parent: return []
         request = self.parent.context.get('request')
@@ -161,48 +171,45 @@ class TenantAssetSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'description')
 
 
-class UserDeviceSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='device__name')
-
-    class Meta:
-        model = models.UserDevice
-        fields = ('id', 'name')
-
-
-class UserProvisionSerializer(serializers.ModelSerializer):
+class UserProvisionSerializer(serializers.Serializer):
     platforms = UserPlatformChoiceField()
     software = UserAssetChoiceField(asset=models.Software)
     devices = UserAssetChoiceField(asset=models.Device)
-    simcards = UserAssetChoiceField(asset=models.MobileDataPlan, source='mobile_data_plans')
+    simcards = UserAssetChoiceField(asset=models.MobileDataPlan)
 
-    def _update_m2m(self, m2m_field_name):
+    def _update_provisioned(self, source):
+        provision_data = getattr(self.object, '_provision_data', {})
+        if source not in provision_data:
+            return
+
+        selected = self.object._provision_data.get(source)
         request = self.context.get('request')
         editor = request.user
+        import pdb; pdb.set_trace()
+        current = getattr(self.object, m2m_field_name)
 
-        manager = getattr(self.object, m2m_field_name)
-        current = manager.current()
-        selected = self.object._m2m_data.get(m2m_field_name)
 
         to_add = [it for it in selected if it not in [c.provisioned_item for c in current]]
         to_remove = [it for it in current if it.provisioned_item not in selected]
 
-        manager.remove(*to_remove, editor=editor)
-        manager.add(*to_add, editor=editor)
+        # manager.remove(*to_remove, editor=editor)
+        # manager.add(*to_add, editor=editor)
+
+    def restore_object(self, attrs, instance=None):
+        if instance is not None:
+            instance._provision_data = attrs
+        return instance
 
     def save_object(self, obj, **kw):
-        self._update_m2m('software')
-        self._update_m2m('devices')
-        self._update_m2m('mobile_data_plans')
+        self._update_provisioned('software')
+        self._update_provisioned('devices')
+        self._update_provisioned('mobile_data_plans')
 
         # platforms come last, so we can be sure that all
         # software/devices/simcards are properly defined.
-        self._update_m2m('platforms')
+        self._update_provisioned('platforms')
 
         return obj
-
-    class Meta:
-        model = User
-        fields = ('platforms', 'software', 'devices', 'simcards')
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
@@ -219,25 +226,16 @@ class UserSummarySerializer(serializers.ModelSerializer):
             }
 
     def get_user_devices(self, obj):
-        return [
-            self._serialize_asset(ud.id, ud.device.name)
-            for ud in obj.userdevice_set.filter(end=None)
-            ]
+        return [up.offer.item for up in obj.get_provisioned_items(item_class=models.Device)]
 
     def get_user_software(self, obj):
-        return [
-            self._serialize_asset(us.id, us.software.name)
-            for us in obj.usersoftware_set.filter(end=None)
-            ]
+        return [up.offer.item for up in obj.get_provisioned_items(item_class=models.Software)]
 
     def get_user_mobile_data_plans(self, obj):
-        return [
-            self._serialize_asset(us.id, us.mobile_data_plan.name)
-            for us in obj.usermobiledataplan_set.filter(end=None)
-            ]
+        return [up.offer.item for up in obj.get_provisioned_items(item_class=models.MobileDataPlan)]
 
     def get_user_platforms(self, obj):
-        provisioned = set([svc.type for svc in obj.platforms.select_subclasses()])
+        provisioned = set([svc.type for svc in obj.current_services])
         return {k: k in provisioned for k in models.TenantService.PLATFORM_TYPES}
 
     class Meta:

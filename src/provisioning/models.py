@@ -27,20 +27,30 @@ from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from autoslug import AutoSlugField
 from jsonfield import JSONField
-from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
 
 from accounting.models import Contract
 from audit.models import Trackable
+from catalog.models import Offer
 from tenants.models import Tenant, TenantService, User
 
-from fields import ProvisionManyToManyField
 import okta
 
 
 log = logging.getLogger(__name__)
+
+
+class Provisionable(object):
+    def activate(self, user, **kw):
+        raise NotImplementedError
+
+    def deprovision(self, service, user, *args, **kw):
+        raise NotImplementedError
+
+    def provision(self, service, user, *args, **kw):
+        raise NotImplementedError
 
 
 class PropertyTable(models.Model):
@@ -58,17 +68,77 @@ class PropertyTable(models.Model):
         abstract = True
 
 
-class Asset(TimeStampedModel):
+class TenantProvisionable(PropertyTable):
+    tenant = models.ForeignKey(Tenant)
+    offer = models.ForeignKey(Offer)
+
+
+class UserProvisionable(TimeStampedModel):
+    user = models.ForeignKey(User)
+    offer = models.ForeignKey(Offer)
+
+    @property
+    def tenant(self):
+        return self.user.tenant
+
+    def provision(self, editor=None):
+        self.item.provision(self.user, editor=editor)
+
+    def __unicode__(self):
+        return '%s provision for user %s' % (self.offer.item, self.user)
+
+
+# class UserPlatform(UserProvisionable):
+#     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['platform']
+#     platform = models.ForeignKey(TenantService)
+
+#     def activate(self, editor=None):
+#         platform = self.platform.__subclass__
+#         platform.activate(self.user)
+#         super(UserPlatform, self).activate(editor=editor)
+
+#     def provision(self, editor=None):
+#         if not self.is_active:
+#             self.activate(editor=editor)
+
+#         for us in self.user.software.current():
+#             self.platform.__subclass__.assign(us.software, self.user)
+
+#     def deprovision(self, editor=None):
+#         platform = self.platform.__subclass__
+#         if not platform.is_active_directory_controller:
+#             platform.deactivate(self.user)
+#         super(UserPlatform, self).deprovision(editor=editor)
+
+
+# class UserSoftware(UserProvisionable):
+#     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
+
+#     def _get_current_platforms(self):
+#         return [up.platform.__subclass__ for up in self.user.platforms.current()]
+
+#     def provision(self, editor=None):
+#         for platform in self._get_current_platforms():
+#             platform.assign(self.software, self.user)
+#         self.activate(editor=editor)
+
+#     def deprovision(self, editor=None):
+#         for platform in self._get_current_platforms():
+#             platform.unassign(self.software, self.user)
+#         super(UserSoftware, self).deprovision(editor=editor)
+
+
+# class UserMobileDataPlan(UserProvisionable):
+#     TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['mobile_data_plan']
+
+
+
+
+class Asset(TimeStampedModel, Provisionable):
     objects = InheritanceManager()
     name = models.CharField(max_length=1000)
     slug = AutoSlugField(populate_from='name', unique=False, default='')
     description = models.TextField(null=True, blank=True)
-
-    def __unicode__(self):
-        return self.name
-
-
-class Software(Asset):
     web = models.BooleanField(default=True)
     mobile = models.BooleanField(default=False)
     desktop = models.BooleanField(default=False)
@@ -77,12 +147,32 @@ class Software(Asset):
     def supported_platforms(self):
         return [p for p in ['web', 'mobile', 'desktop'] if getattr(self, p)]
 
+    def can_be_managed_by(self, service):
+        return service.type in self.supported_platforms
+
+    def __unicode__(self):
+        return self.name
+
+    @staticmethod
+    def _get_current_platforms(user):
+        service_types = ContentType.objects.get_for_models(*TenantService.get_available())
+        return user.userprovisionable_set.filter(offer__item_type__in=service_types)
+
+
+class Software(Asset):
+
+    def activate(self, user, *args, **kw):
+        pass
+
+    def deprovision(self, service, user, *args, **kw):
+        service.unassign(self, user)
+
+    def provision(self, service, user, *args, **kw):
+        service.assign(self, user)
+
 
 class Device(Asset):
     image = models.ImageField(null=True, blank=True)
-
-    def can_be_managed_by(self, service):
-        return True
 
     @property
     def __subclass__(self):
@@ -90,6 +180,56 @@ class Device(Asset):
             self.__class__ = ChromeDevice
         return self
 
+    def _get_email_template_parameters(self, service, user):
+        device = self.__subclass__
+        if isinstance(device, ChromeDevice):
+            return {
+                'user': user,
+                'service': service,
+                'site': settings.SITE,
+                'device': device
+                }
+        return None
+
+    def _get_email_template(self, service, format='html'):
+        extension = {
+            'text': 'txt',
+            'html': 'html'
+        }.get(format, format)
+        template_name = None
+        if isinstance(self.__subclass__, ChromeDevice):
+            template_name = 'activation_chromebook'
+
+        return template_name and 'provisioning/mail/%s/%s.tmpl.%s' % (
+            format, template_name, extension
+            )
+
+    def activate(self, user, *args, **kw):
+        pass
+
+    def provision(self, user, editor=None):
+        for service in self._get_current_platforms(user):
+            if self.can_be_managed_by(service):
+                self._on_device_provision(service, user)
+
+    def _on_device_provision(self, service, user):
+        html_template = self._get_email_template(service, format='html')
+        text_template = self._get_email_template(service, format='text')
+        if not (html_template or text_template):
+            return
+
+        template_parameters = self._get_email_template_parameters(service, user)
+
+        text_msg = render_to_string(text_template, template_parameters)
+        html_msg = render_to_string(html_template, template_parameters)
+
+        send_mail(
+            '%s - Start using your %s' % (settings.SITE.get('name'), self.name),
+            text_msg,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_msg
+        )
 
 class MobileDataPlan(Asset):
     pass
@@ -111,7 +251,7 @@ class TenantAsset(PropertyTable):
         unique_together = ('tenant', 'asset')
 
 
-class Okta(TenantService):
+class Okta(TenantService, Provisionable):
     PLATFORM_TYPE = TenantService.PLATFORM_TYPE_CHOICES.web
     ACTIVE_DIRECTORY_CONTROLLER = True
     domain = models.CharField(max_length=200)
@@ -148,7 +288,7 @@ class Okta(TenantService):
         remote_user.set_password(password)
         return remote_user, password
 
-    def activate(self, user):
+    def activate(self, user, *args, **kw):
         client = self.get_client()
         try:
             service_user = self.get_service_user(user)
@@ -220,7 +360,7 @@ class Okta(TenantService):
         verbose_name = 'Okta'
 
 
-class AirWatch(TenantService):
+class AirWatch(TenantService, Provisionable):
     PLATFORM_TYPE = 'mobile'
 
     username = models.CharField(max_length=80)
@@ -258,7 +398,7 @@ class AirWatch(TenantService):
         except airwatch.user.UserAlreadyRegisteredError:
             return self.get_service_user(user)
 
-    def activate(self, user):
+    def activate(self, user, *args, **kw):
         service_user = self.get_service_user(user)
         if service_user is None:
             service_user = self.register(user)
@@ -330,7 +470,7 @@ class AirWatch(TenantService):
         verbose_name = 'AirWatch'
 
 
-class MobileIron(TenantService):
+class MobileIron(TenantService, Provisionable):
     PLATFORM_TYPE = 'mobile'
 
 
@@ -351,176 +491,6 @@ class TenantServiceAsset(PropertyTable):
 
     class Meta:
         unique_together = ('service', 'asset')
-
-
-class UserProvisionable(Trackable, TimeFramedModel, StatusModel):
-    STATUS = Choices('staged', 'active', 'suspended', 'deprovisioned')
-    TRACKABLE_ATTRIBUTES = ['user', 'start', 'end', 'status', 'status_changed']
-
-    user = models.ForeignKey(User)
-
-    @property
-    def tenant(self):
-        return self.user.tenant
-
-    @property
-    def is_provisionable(self):
-        return self.end is None
-
-    @property
-    def is_active(self):
-        return self.status == UserProvisionable.STATUS.active
-
-    @property
-    def provisioned_item(self):
-        if hasattr(self.__class__, 'PROVISIONABLE_ITEM_FIELD_NAME'):
-            return getattr(self, self.__class__.PROVISIONABLE_ITEM_FIELD_NAME)
-
-        base_attrs = set(UserProvisionable.TRACKABLE_ATTRIBUTES)
-        extra_attr = (set(self.__class__.TRACKABLE_ATTRIBUTES) - base_attrs).pop()
-        return getattr(self, extra_attr)
-
-    def activate(self, editor=None):
-        contract = Contract.available.filter(
-            tenant=self.user.tenant,
-            offer__item_type=ContentType.objects.get_for_model(self.provisioned_item),
-            offer__object_id=self.provisioned_item.pk
-            )
-        if contract.exists(): contract.get().execute(editor)
-        self.status = UserProvisionable.STATUS.active
-        self.save(editor=editor)
-
-    def suspend(self, editor=None):
-        self.status = UserProvisionable.STATUS.suspended
-        self.save(editor=editor)
-
-    def deprovision(self, editor=None):
-        self.end = datetime.datetime.now()
-        self.status = UserProvisionable.STATUS.deprovisioned
-        self.save(editor=editor)
-
-    def provision(self, editor=None):
-        raise NotImplementedError
-
-    def __unicode__(self):
-        return '%s provision for user %s' % (self.provisioned_item, self.user)
-
-    class Meta:
-        abstract = True
-
-
-class UserPlatform(UserProvisionable):
-    TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['platform']
-    platform = models.ForeignKey(TenantService)
-
-    def activate(self, editor=None):
-        platform = self.platform.__subclass__
-        platform.activate(self.user)
-        super(UserPlatform, self).activate(editor=editor)
-
-    def provision(self, editor=None):
-        if not self.is_active:
-            self.activate(editor=editor)
-
-        for us in self.user.software.current():
-            self.platform.__subclass__.assign(us.software, self.user)
-
-    def deprovision(self, editor=None):
-        platform = self.platform.__subclass__
-        if not platform.is_active_directory_controller:
-            platform.deactivate(self.user)
-        super(UserPlatform, self).deprovision(editor=editor)
-
-
-class UserDevice(UserProvisionable):
-    TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['device']
-    device = models.ForeignKey(Device)
-
-    def _get_current_platforms(self):
-        return [up.platform.__subclass__ for up in self.user.platforms.current()]
-
-    def _get_email_template_parameters(self, service):
-        device = self.device.__subclass__
-        if isinstance(device, ChromeDevice):
-            return {
-                'user': self.user,
-                'service': service,
-                'site': settings.SITE,
-                'device': device
-                }
-        return None
-
-    def _get_email_template(self, service, format='html'):
-        extension = {
-            'text': 'txt',
-            'html': 'html'
-        }.get(format, format)
-        template_name = None
-        if isinstance(self.device.__subclass__, ChromeDevice):
-            template_name = 'activation_chromebook'
-
-        return template_name and 'provisioning/mail/%s/%s.tmpl.%s' % (
-            format, template_name, extension
-            )
-
-    def provision(self, editor=None):
-        if not self.is_active:
-            self.activate(editor=editor)
-
-        device = self.device.__subclass__
-        for platform in self._get_current_platforms():
-            if device.can_be_managed_by(platform):
-                self._on_device_provision(platform)
-
-    def _on_device_provision(self, service):
-        html_template = self._get_email_template(service, format='html')
-        text_template = self._get_email_template(service, format='text')
-        if not (html_template or text_template):
-            return
-
-        template_parameters = self._get_email_template_parameters(service)
-
-        text_msg = render_to_string(text_template, template_parameters)
-        html_msg = render_to_string(html_template, template_parameters)
-
-        send_mail(
-            '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
-            text_msg,
-            settings.DEFAULT_FROM_EMAIL,
-            [self.user.email],
-            html_message=html_msg
-        )
-
-
-class UserSoftware(UserProvisionable):
-    TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['software']
-    software = models.ForeignKey(Software)
-
-    def _get_current_platforms(self):
-        return [up.platform.__subclass__ for up in self.user.platforms.current()]
-
-    def provision(self, editor=None):
-        for platform in self._get_current_platforms():
-            platform.assign(self.software, self.user)
-        self.activate(editor=editor)
-
-    def deprovision(self, editor=None):
-        for platform in self._get_current_platforms():
-            platform.unassign(self.software, self.user)
-        super(UserSoftware, self).deprovision(editor=editor)
-
-
-class UserMobileDataPlan(UserProvisionable):
-    TRACKABLE_ATTRIBUTES = UserProvisionable.TRACKABLE_ATTRIBUTES + ['mobile_data_plan']
-    mobile_data_plan = models.ForeignKey(MobileDataPlan)
-
-
-User.add_to_class('platforms', ProvisionManyToManyField(TenantService, through=UserPlatform))
-User.add_to_class('software', ProvisionManyToManyField(Software, through=UserSoftware))
-User.add_to_class('devices', ProvisionManyToManyField(Device, through=UserDevice))
-User.add_to_class(
-    'mobile_data_plans', ProvisionManyToManyField(MobileDataPlan, through=UserMobileDataPlan)
-    )
 
 
 if not getattr(settings, 'PROVISIONABLE_SERVICES'):

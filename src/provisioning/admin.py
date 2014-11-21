@@ -65,29 +65,7 @@ class TenantServiceAssetAdmin(admin.ModelAdmin):
     list_filter = ('asset', )
 
 
-@admin.register(models.UserPlatform)
-class UserPlatformAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'platform', )
-    list_filter = ('platform', )
-    search_fields = ('user__username', )
-
-
-@admin.register(models.UserSoftware)
-class UserSoftwareAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'software', )
-    list_filter = ('software', )
-    search_fields = ('user__username', )
-
-
-@admin.register(models.UserDevice)
-class UserDeviceAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'device', )
-    list_filter = ('device', )
-    search_fields = ('user__username', )
-
-
-@admin.register(models.UserMobileDataPlan)
-class UserMobileDataPlanAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'mobile_data_plan', )
-    list_filter = ('mobile_data_plan', )
+@admin.register(models.UserProvisionable)
+class UserProvisionableAdmin(admin.ModelAdmin):
+    list_display = ('user', 'offer', )
     search_fields = ('user__username', )

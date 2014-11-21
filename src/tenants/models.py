@@ -115,8 +115,6 @@ class Tenant(TimeStampedModel):
     primary_contact = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='tenant')
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='peers', blank=True)
     active_directory = models.OneToOneField(ActiveDirectory, null=True, blank=True)
-
-    #
     email_domain = models.CharField(max_length=300, default='onmicrosoft.com')
 
     def get_active_directory_session(self):
@@ -257,6 +255,12 @@ class User(Trackable, Synchronizable):
     def full_username(self):
         return '%s@%s' % (self.username, self.tenant.active_directory.url)
 
+    @property
+    def current_services(self):
+        supported_services = [s.model_class for s in TenantService.get_available()]
+        service_types = ContentType.objects.get_for_models(*supported_services).values()
+        return self.userprovisionable_set.filter(offer__item_type__in=service_types)
+
     def get_remote(self):
         return self.tenant.active_directory.find_user(self.username)
 
@@ -288,6 +292,12 @@ class User(Trackable, Synchronizable):
 
     def get_default_display_name(self):
         return ' '.join([self.first_name, self.last_name])
+
+    def get_provisioned_items(self, item_class=None):
+        qs = self.userprovisionable_set.all()
+        if item_class is not None:
+            qs = qs.filter(offer__item_type=ContentType.objects.get_for_model(item_class))
+        return qs
 
     def save(self, *args, **kw):
         with transaction.atomic():
