@@ -521,7 +521,7 @@ class UserSoftware(UserProvisionable):
         self.activate(editor=editor)
 
     def deprovision(self, editor=None):
-        for platform in self._get_current_platforms():
+        for platform in self._get_current_platforms_for_this_software():
             platform.unassign(self.software, self.user)
         super(UserSoftware, self).deprovision(editor=editor)
 
