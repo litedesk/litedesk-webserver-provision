@@ -73,7 +73,6 @@ class UserPlatformChoiceField(UserModelChoiceField):
     def field_from_native(self, data, files, field_name, reverted_data):
         value = data.getlist(field_name)
         reverted_data[field_name] = [self.from_native(it) for it in value]
-        log.debug(reverted_data)
         return reverted_data
 
 
@@ -90,9 +89,10 @@ class UserAssetChoiceField(UserModelChoiceField):
         return self.asset_class.objects.filter(tenantasset__tenant=obj.tenant)
 
     def field_to_native(self, obj, field_name):
-        return [self.to_native(it.pk) for it in [
-            up.item for up in obj.get_provisioned_items(item_class=self.asset_class)
-            ]]
+        return [
+            self.to_native(it.pk)
+            for it in obj.get_provisioned_items(item_class=self.asset_class)
+            ]
 
     def field_from_native(self, data, files, field_name, reverted_data):
         ids = data.getlist(field_name)
@@ -169,22 +169,27 @@ class UserProvisionSerializer(serializers.ModelSerializer):
     simcards = UserAssetChoiceField(asset=models.MobileDataPlan)
 
     def _update_provisioned(self, field_name, service):
+        request = self.context.get('request')
+        editor = request.user
         provision_data = getattr(self.object, '_provision_data', {})
 
         if field_name not in provision_data:
             return
+
         item_class = self.fields[field_name].asset_class
         selected = self.object._provision_data.get(field_name)
-        current = self.object.get_provisioned_items(item_class=item_class)
+        current = self.object.get_provisioned_items(item_class=item_class, service=service)
 
         to_add = [it for it in selected if it not in current]
         to_remove = [it for it in current if it not in selected]
 
         for item in to_add:
-            item.provision(service, self.object)
+            log.debug('Adding %s to %s' % (item, service))
+            item.provision(service, self.object, editor=editor)
 
         for item in to_remove:
-            item.deprovision(service, self.object)
+            log.debug('Removing %s from %s' % (item, service))
+            item.deprovision(service, self.object, editor=editor)
 
     def restore_object(self, attrs, instance=None):
         if instance is not None:
@@ -193,18 +198,17 @@ class UserProvisionSerializer(serializers.ModelSerializer):
 
     def save_object(self, obj, **kw):
         request = self.context.get('request')
-        obj.services = self.object._provision_data.get('platforms', [])
-        for service in obj.services:
+        for service in obj.tenant.tenantservice_set.select_subclasses():
             self._update_provisioned('software', service)
             self._update_provisioned('devices', service)
             self._update_provisioned('simcards', service)
+        obj.services = self.object._provision_data.get('platforms', [])
         obj.save(editor=request.user)
         return obj
 
     class Meta:
         model = User
         fields = ('platforms', 'software', 'devices', 'simcards')
-        # fields = ('platforms',)
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
@@ -221,13 +225,22 @@ class UserSummarySerializer(serializers.ModelSerializer):
             }
 
     def get_user_devices(self, obj):
-        return [up.item for up in obj.get_provisioned_items(item_class=models.Device)]
+        return [
+            self._serialize_asset(it)
+            for it in obj.get_provisioned_items(item_class=models.Device)
+            ]
 
     def get_user_software(self, obj):
-        return [up.item for up in obj.get_provisioned_items(item_class=models.Software)]
+        return [
+            self._serialize_asset(it)
+            for it in obj.get_provisioned_items(item_class=models.Software)
+            ]
 
     def get_user_mobile_data_plans(self, obj):
-        return [up.item for up in obj.get_provisioned_items(item_class=models.MobileDataPlan)]
+        return [
+            self._serialize_asset(it)
+            for it in obj.get_provisioned_items(item_class=models.MobileDataPlan)
+            ]
 
     def get_user_platforms(self, obj):
         provisioned = set([svc.type for svc in obj.services.all()])
@@ -235,4 +248,4 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        exclude = ('mobile_data_plans', 'last_modified', 'tenant')
+        exclude = ('mobile_data_plans', 'last_modified', 'tenant', 'services')

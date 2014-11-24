@@ -163,7 +163,7 @@ class TenantService(models.Model):
 
     @property
     def type(self):
-        return self.__class__.PLATFORM_TYPE
+        return self.__subclass__.PLATFORM_TYPE
 
     @property
     def name(self):
@@ -288,11 +288,13 @@ class User(Trackable, Synchronizable):
     def get_default_display_name(self):
         return ' '.join([self.first_name, self.last_name])
 
-    def get_provisioned_items(self, item_class=None):
+    def get_provisioned_items(self, item_class=None, service=None):
         qs = self.userprovisionable_set.all()
         if item_class is not None:
             qs = qs.filter(item_type=ContentType.objects.get_for_model(item_class))
-        return qs
+        if service is not None:
+            qs = qs.filter(service=service)
+        return set([up.item for up in qs])
 
     def save(self, *args, **kw):
         with transaction.atomic():

@@ -38,6 +38,7 @@ from catalog.models import Offer
 from tenants.models import Tenant, TenantService, User
 
 import okta
+from signals import item_provisioned, item_deprovisioned
 
 
 log = logging.getLogger(__name__)
@@ -88,6 +89,9 @@ class UserProvisionable(TimeStampedModel, StatusModel):
 
     def __unicode__(self):
         return '%s provision for user %s on %s' % (self.item, self.user, self.service)
+
+    class Meta:
+        unique_together = ('user', 'service', 'item_type', 'object_id')
 
 
 # class UserPlatform(UserProvisionable):
@@ -147,28 +151,53 @@ class Asset(TimeStampedModel, Provisionable):
     def supported_platforms(self):
         return [p for p in ['web', 'mobile', 'desktop'] if getattr(self, p)]
 
+    def provision(self, service, user, editor=None):
+        log.debug('Provisioning %s for user %s on %s' % (self, user, service))
+        if self.can_be_managed_by(service):
+            UserProvisionable.objects.create(
+                service=service,
+                user=user,
+                item_type=ContentType.objects.get_for_model(self),
+                object_id=self.id
+                )
+            item_provisioned.send(
+                sender=self.__class__,
+                editor=editor,
+                instance=self,
+                service=service,
+                user=user
+                )
+
+    def deprovision(self, service, user, editor=None):
+        UserProvisionable.objects.filter(
+            service=service,
+            user=user,
+            item_type=ContentType.objects.get_for_model(self),
+            object_id=self.id
+            ).delete()
+        item_deprovisioned.send(
+            sender=self.__class__,
+            editor=editor,
+            instance=self,
+            service=service,
+            user=user
+        )
+
     def can_be_managed_by(self, service):
         return service.type in self.supported_platforms
 
     def __unicode__(self):
         return self.name
 
-    @staticmethod
-    def _get_current_platforms(user):
-        service_types = ContentType.objects.get_for_models(*TenantService.get_available())
-        return user.userprovisionable_set.filter(offer__item_type__in=service_types)
-
 
 class Software(Asset):
-
-    def activate(self, user, *args, **kw):
-        pass
-
-    def deprovision(self, service, user, *args, **kw):
-        service.unassign(self, user)
-
-    def provision(self, service, user, *args, **kw):
+    def provision(self, service, user, editor=None):
         service.assign(self, user)
+        super(Software, self).provision(service, user, editor=editor)
+
+    def deprovision(self, service, user, editor=None):
+        service.unassign(self, user)
+        super(Software, self).deprovision(service, user, editor=editor)
 
 
 class Device(Asset):
@@ -204,15 +233,8 @@ class Device(Asset):
             format, template_name, extension
             )
 
-    def activate(self, user, *args, **kw):
-        pass
-
-    def provision(self, user, editor=None):
-        for service in self._get_current_platforms(user):
-            if self.can_be_managed_by(service):
-                self._on_device_provision(service, user)
-
-    def _on_device_provision(self, service, user):
+    def provision(self, service, user, editor=None):
+        super(Device, self).provision(service, user, editor=editor)
         html_template = self._get_email_template(service, format='html')
         text_template = self._get_email_template(service, format='text')
         if not (html_template or text_template):
@@ -230,6 +252,9 @@ class Device(Asset):
             [user.email],
             html_message=html_msg
         )
+
+    def activate(self, user, *args, **kw):
+        pass
 
 
 class MobileDataPlan(Asset):
