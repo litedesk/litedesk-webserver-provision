@@ -21,6 +21,7 @@ from optparse import make_option
 from provisioning import okta
 from provisioning.models import Okta
 from litedesk.lib.airwatch import user
+# from litedesk.lib.airwatch import groups
 from provisioning.models import AirWatch
 import json
 
@@ -29,8 +30,8 @@ class Command(BaseCommand):
     help = 'Get information about a user.'
     option_list = BaseCommand.option_list + (
         make_option('--username',
-            default="bruce.wayne",
-            help='Username to find. Default="bruce.wayne"'),
+                    default="bruce.wayne",
+                    help='Username to find. Default="bruce.wayne"'),
         )
 
     def handle(self, *args, **options):
@@ -38,20 +39,21 @@ class Command(BaseCommand):
         okta_service = Okta.objects.all().get()
         client = okta.Client(okta_service.domain, okta_service.api_token)
         okta_user = client.search(okta.User, options["username"].split('.')[0])[0]
-        # self.stdout.write("got the Okta user with the id")
+         # self.stdout.write("got the Okta user with the id")
         result['okta']['id'] = okta_user.id
         result['okta']['status'] = okta_user.status
-        
+        result['okta']['applications'] = []
+        okta_apps = client.user_applications(okta_user)
+        for app in okta_apps:
+            result['okta']['applications'].append({"name": app['name'],"status":app['status']})
         airwatch_service = AirWatch.objects.all().get()
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
+        # usernames = groups.UserGroups.usernames_by_group_id(
+        #    airwatch_client,airwatch_service.airwatch
+        #    )
         result['airwatch']['id'] = airwatch_user.id
         result['airwatch']['Status'] = airwatch_user.Status
         self.stdout.write(json.dumps(result))
-
-
-
-
-
 
 

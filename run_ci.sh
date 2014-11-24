@@ -19,8 +19,8 @@ mkdir -p "$WORKSPACE/logs"
 
 pip install --download-cache=/tmp -r $WORKSPACE/requirements.txt || exit 23
 # download the fixtures
-rm -rf "$WORKSPACE/cross7-data" 2>/dev/null
-git clone git@bitbucket.org:litedesk/cross7-data.git
+#rm -rf "$WORKSPACE/cross7-data" 2>/dev/null
+#git clone git@bitbucket.org:litedesk/cross7-data.git
 rm -f "$WORKSPACE/app.db" 2>/dev/null
 cp "$WORKSPACE/src/litedesk_service_api/local_settings.py.sample" "$WORKSPACE/src/litedesk_service_api/local_settings.py" 
 cat <<EOT >> "$WORKSPACE/src/litedesk_service_api/local_settings.py"
