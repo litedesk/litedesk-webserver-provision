@@ -21,7 +21,7 @@ from optparse import make_option
 from provisioning import okta
 from provisioning.models import Okta
 from litedesk.lib.airwatch import user
-# from litedesk.lib.airwatch import groups
+from litedesk.lib.airwatch import group
 from provisioning.models import AirWatch
 import json
 
@@ -49,11 +49,12 @@ class Command(BaseCommand):
         airwatch_service = AirWatch.objects.all().get()
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
-        # usernames = groups.UserGroups.usernames_by_group_id(
-        #    airwatch_client,airwatch_service.airwatch
-        #    )
         result['airwatch']['id'] = airwatch_user.id
         result['airwatch']['Status'] = airwatch_user.Status
+        result['airwatch']['applications'] = []
+        aw_assets = airwatch_service.airwatch.tenantserviceasset_set.all()
+        for asset in aw_assets:
+            group_id = asset.metadata['group_id']
+            if options["username"] in group.UserGroup.usernames_by_group_id(airwatch_client, group_id):
+                result['airwatch']['applications'].append({"name":asset.asset.name})
         self.stdout.write(json.dumps(result))
-
-
