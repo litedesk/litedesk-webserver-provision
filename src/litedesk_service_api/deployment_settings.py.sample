@@ -17,16 +17,10 @@
 
 SECRET_KEY='change-this-and-make-it-a-secret'
 
-# SITE is a variable that contains per-instance, customizable parameters.
-SITE = {
-    'ACTIVATION_EMAIL_SUBJECT': 'Crosseven - Welcome to Okta'
-    }
-
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-LOG_DIR = os.path.join(BASE_DIR, 'log')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -39,19 +33,16 @@ ALLOWED_HOSTS = []
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'cross7',
-        'USER': 'cross7',
+        'NAME': 'example',
+        'USER': 'example',
         'PASSWORD': None,
         'HOST': ''
     }
 }
 
-# Only for development, in case you need django to serve the static
-# files from the front-end code as well.
-
 STATIC_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'static'))
 
-_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'cross7-front', 'ui'))
+_FRONT_END_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'example-front', 'ui'))
 
 STATICFILES_DIRS = [
     _FRONT_END_ROOT,
@@ -63,6 +54,11 @@ EXTRA_STATIC_ROOTS = (
     ('fonts', os.path.join(_FRONT_END_ROOT, 'fonts')),
     ('img', os.path.join(_FRONT_END_ROOT, 'img')),
 )
+
+SITE = {
+    'name': 'Example Site',
+    'host_url': 'http://example.com'
+}
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'

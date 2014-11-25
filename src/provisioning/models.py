@@ -15,10 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import datetime
 import logging
-import random
-import string
+from urlparse import urlparse
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -31,6 +31,8 @@ from model_utils import Choices
 from model_utils.managers import InheritanceManager
 from model_utils.models import TimeFramedModel, TimeStampedModel, StatusModel
 from litedesk.lib import airwatch
+import qrcode
+from qrcode.image.pure import PymagingImage
 
 from accounting.models import Contract
 from audit.models import Trackable
@@ -131,6 +133,10 @@ class Okta(TenantService):
         client = self.get_client()
         return client.get(okta.User, user.tenant_email)
 
+    def get_users(self):
+        client = self.get_client()
+        return client.get_users()
+
     def register(self, user):
         client = self.get_client()
         try:
@@ -138,15 +144,6 @@ class Okta(TenantService):
         except okta.UserAlreadyExistsError:
             pass
         return self.get_service_user(user)
-
-    def set_random_ad_password(self, user):
-        remote_user = user.get_remote()
-        password = ''.join([
-            random.choice(string.ascii_letters + string.digits)
-            for n in xrange(8)
-        ])
-        remote_user.set_password(password)
-        return remote_user, password
 
     def activate(self, user):
         client = self.get_client()
@@ -156,10 +153,8 @@ class Okta(TenantService):
             service_user = self.register(user)
 
         try:
-            ad_user, password = self.set_random_ad_password(user)
             activation_response = client.activate_user(service_user, send_email=False)
-            ad_user.activate()
-            ad_user.save()
+            password = user.get_remote().set_one_time_password()
             template_parameters = {
                 'user': user,
                 'service': self,
@@ -222,6 +217,9 @@ class Okta(TenantService):
 
 class AirWatch(TenantService):
     PLATFORM_TYPE = 'mobile'
+    QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
+    QRCODE_ROOT_URL = settings.SITE.get('host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
+    QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
 
     username = models.CharField(max_length=80)
     password = models.CharField(max_length=1000)
@@ -238,6 +236,13 @@ class AirWatch(TenantService):
     @property
     def portal_help_url(self):
         return '%s/AirWatch/HelpSystem/en/Default.htm' % self.portal_url
+
+    @property
+    def api_server_domain(self):
+        portal_domain = urlparse(self.server_url).netloc
+        components = portal_domain.split('.')
+        if components[0] == 'as': components[0] = 'ds'
+        return '.'.join(components)
 
     def get_client(self):
         return airwatch.client.Client(
@@ -258,18 +263,35 @@ class AirWatch(TenantService):
         except airwatch.user.UserAlreadyRegisteredError:
             return self.get_service_user(user)
 
+    @property
+    def qrcode(self):
+        server_domain = self.api_server_domain
+        image_dir = os.path.join(self.QRCODE_ROOT_DIR, server_domain)
+        image_file_name = '{0}.png'.format(self.group_id)
+        image_file_path = os.path.join(image_dir, image_file_name)
+        if not os.path.exists(image_file_path):
+            if not os.path.exists(image_dir):
+                os.mkdir(image_dir)
+            data = self.QRCODE_TEMPLATE.format(server_domain, self.group_id)
+            image = qrcode.make(data, image_factory=PymagingImage, box_size=5)
+            with open(image_file_path, 'w') as image_file:
+                image.save(image_file)
+        image_url = self.QRCODE_ROOT_URL + server_domain + '/' + image_file_name
+        return image_url
+
     def activate(self, user):
         service_user = self.get_service_user(user)
         if service_user is None:
             service_user = self.register(user)
 
         try:
-            title = '%s - Welcome to Airwatch' % settings.SITE.get('name')
+            title = '%s - Welcome to AirWatch' % settings.SITE.get('name')
             service_user.activate()
             template_parameters = {
                 'user': user,
                 'service': self,
-                'site': settings.SITE
+                'site': settings.SITE,
+                'qr_code': self.qrcode
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_airwatch.tmpl.txt', template_parameters
@@ -294,6 +316,8 @@ class AirWatch(TenantService):
         service_user = airwatch.user.User.get_remote(client, user.username)
         if service_user is not None:
             service_user.deactivate()
+            for tenantserviceasset in self.tenantserviceasset_set.all():
+                self.unassign(tenantserviceasset.asset, user)
 
     def assign(self, software, user):
         if self.type not in software.supported_platforms: return
@@ -423,7 +447,8 @@ class UserPlatform(UserProvisionable):
             self.activate(editor=editor)
 
         for us in self.user.software.current():
-            self.platform.__subclass__.assign(us.software, self.user)
+            if self.platform.__subclass__.type in us.software.platform_types:
+                self.platform.__subclass__.assign(us.software, self.user)
 
     def deprovision(self, editor=None):
         platform = self.platform.__subclass__
@@ -446,8 +471,9 @@ class UserDevice(UserProvisionable):
                 'user': self.user,
                 'service': service,
                 'site': settings.SITE,
-                'device': device
-                }
+                'device': device,
+                'include_additional_information_message': True
+            }
         return None
 
     def _get_email_template(self, service, format='html'):
@@ -484,7 +510,7 @@ class UserDevice(UserProvisionable):
         html_msg = render_to_string(html_template, template_parameters)
 
         send_mail(
-            '%s - Start using your %s' % (settings.SITE.get('name'), self.device.name),
+            '%s - Welcome to Google' % (settings.SITE.get('name')),
             text_msg,
             settings.DEFAULT_FROM_EMAIL,
             [self.user.email],
@@ -505,7 +531,7 @@ class UserSoftware(UserProvisionable):
         self.activate(editor=editor)
 
     def deprovision(self, editor=None):
-        for platform in self._get_current_platforms():
+        for platform in self._get_current_platforms_for_this_software():
             platform.unassign(self.software, self.user)
         super(UserSoftware, self).deprovision(editor=editor)
 
