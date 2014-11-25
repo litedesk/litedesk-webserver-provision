@@ -59,6 +59,12 @@ class UserModelChoiceField(serializers.PrimaryKeyRelatedField):
         request = self.parent.context.get('request')
         return [(x.id, unicode(x)) for x in self.get_choices_queryset(request.user)]
 
+    def _get_field_list(self, data, field_name):
+        try:
+            return data.getlist(field_name)
+        except AttributeError:
+            return data.get(field_name)
+
     choices = property(_get_choices, serializers.PrimaryKeyRelatedField._set_choices)
 
 
@@ -71,7 +77,7 @@ class UserPlatformChoiceField(UserModelChoiceField):
         return obj.tenant.tenantservice_set.filter(is_active=True)
 
     def field_from_native(self, data, files, field_name, reverted_data):
-        value = data.getlist(field_name)
+        value = self._get_field_list(data, field_name)
         reverted_data[field_name] = [self.from_native(it) for it in value]
         return reverted_data
 
@@ -95,7 +101,7 @@ class UserAssetChoiceField(UserModelChoiceField):
             ]
 
     def field_from_native(self, data, files, field_name, reverted_data):
-        ids = data.getlist(field_name)
+        ids = self._get_field_list(data, field_name)
         reverted_data[field_name] = self.asset_class.objects.filter(id__in=ids)
         return reverted_data
 
