@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+import provisioning.models
 import autoslug.fields
 import jsonfield.fields
 import django.utils.timezone
@@ -11,7 +12,9 @@ import model_utils.fields
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('catalog', '0001_initial'),
         ('tenants', '0001_initial'),
+        ('contenttypes', '0001_initial'),
     ]
 
     operations = [
@@ -27,7 +30,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'AirWatch',
             },
-            bases=('tenants.tenantservice',),
+            bases=('tenants.tenantservice', provisioning.models.Provisionable),
         ),
         migrations.CreateModel(
             name='Asset',
@@ -38,11 +41,14 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=1000)),
                 ('slug', autoslug.fields.AutoSlugField(default=b'', editable=False)),
                 ('description', models.TextField(null=True, blank=True)),
+                ('web', models.BooleanField(default=True)),
+                ('mobile', models.BooleanField(default=False)),
+                ('desktop', models.BooleanField(default=False)),
             ],
             options={
                 'abstract': False,
             },
-            bases=(models.Model,),
+            bases=(models.Model, provisioning.models.Provisionable),
         ),
         migrations.CreateModel(
             name='Device',
@@ -72,7 +78,7 @@ class Migration(migrations.Migration):
             ],
             options={
             },
-            bases=('tenants.tenantservice',),
+            bases=('tenants.tenantservice', provisioning.models.Provisionable),
         ),
         migrations.CreateModel(
             name='Okta',
@@ -83,15 +89,12 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Okta',
             },
-            bases=('tenants.tenantservice',),
+            bases=('tenants.tenantservice', provisioning.models.Provisionable),
         ),
         migrations.CreateModel(
             name='Software',
             fields=[
                 ('asset_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='provisioning.Asset')),
-                ('web', models.BooleanField(default=True)),
-                ('mobile', models.BooleanField(default=False)),
-                ('desktop', models.BooleanField(default=False)),
             ],
             options={
                 'abstract': False,
@@ -111,6 +114,19 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.CreateModel(
+            name='TenantProvisionable',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('metadata', jsonfield.fields.JSONField(null=True)),
+                ('offer', models.ForeignKey(to='catalog.Offer')),
+                ('tenant', models.ForeignKey(to='tenants.Tenant')),
+            ],
+            options={
+                'abstract': False,
+            },
+            bases=(models.Model,),
+        ),
+        migrations.CreateModel(
             name='TenantServiceAsset',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
@@ -123,76 +139,25 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.CreateModel(
-            name='UserDevice',
+            name='UserProvisionable',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
-                ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
+                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'processing', b'processing'), (b'active', b'active')])),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
-                ('device', models.ForeignKey(to='provisioning.Device')),
+                ('object_id', models.PositiveIntegerField()),
+                ('item_type', models.ForeignKey(to='contenttypes.ContentType')),
+                ('service', models.ForeignKey(to='tenants.TenantService')),
                 ('user', models.ForeignKey(to='tenants.User')),
             ],
             options={
-                'abstract': False,
             },
             bases=(models.Model,),
         ),
-        migrations.CreateModel(
-            name='UserMobileDataPlan',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
-                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
-                ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
-                ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
-                ('mobile_data_plan', models.ForeignKey(to='provisioning.MobileDataPlan')),
-                ('user', models.ForeignKey(to='tenants.User')),
-            ],
-            options={
-                'abstract': False,
-            },
-            bases=(models.Model,),
-        ),
-        migrations.CreateModel(
-            name='UserPlatform',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
-                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
-                ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
-                ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
-                ('platform', models.ForeignKey(to='tenants.TenantService')),
-                ('user', models.ForeignKey(to='tenants.User')),
-            ],
-            options={
-                'abstract': False,
-            },
-            bases=(models.Model,),
-        ),
-        migrations.CreateModel(
-            name='UserSoftware',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
-                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
-                ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
-                ('status', model_utils.fields.StatusField(default=b'staged', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'staged', b'staged'), (b'active', b'active'), (b'suspended', b'suspended'), (b'deprovisioned', b'deprovisioned')])),
-                ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
-                ('software', models.ForeignKey(to='provisioning.Software')),
-                ('user', models.ForeignKey(to='tenants.User')),
-            ],
-            options={
-                'abstract': False,
-            },
-            bases=(models.Model,),
+        migrations.AlterUniqueTogether(
+            name='userprovisionable',
+            unique_together=set([('user', 'service', 'item_type', 'object_id')]),
         ),
         migrations.AlterUniqueTogether(
             name='tenantserviceasset',
