@@ -26,15 +26,15 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
-from jsonfield import JSONField
 from litedesk.lib import airwatch
 from model_utils import Choices
 from model_utils.managers import InheritanceManager
-from model_utils.models import TimeStampedModel, StatusModel
+from model_utils.models import TimeStampedModel, TimeFramedModel, StatusModel
 from qrcode.image.pure import PymagingImage
 import qrcode
 
 from catalog.models import Offer
+from contrib.models import PropertyTable
 from tenants.models import Tenant, TenantService, User
 
 import okta
@@ -53,21 +53,6 @@ class Provisionable(object):
 
     def provision(self, service, user, *args, **kw):
         raise NotImplementedError
-
-
-class PropertyTable(models.Model):
-    metadata = JSONField(null=True)
-
-    def get(self, prop):
-        return self.metadata and self.metadata.get(prop)
-
-    def set(self, prop, value):
-        if self.metadata is None:
-            self.metadata = {}
-        self.metadata[prop] = value
-
-    class Meta:
-        abstract = True
 
 
 class TenantProvisionable(PropertyTable):
@@ -92,6 +77,11 @@ class UserProvisionable(TimeStampedModel, StatusModel):
 
     class Meta:
         unique_together = ('user', 'service', 'item_type', 'object_id')
+
+
+class UserProvisionHistory(TimeFramedModel):
+    user = models.ForeignKey(User)
+    offer = models.ForeignKey(Offer)
 
 
 class Asset(TimeStampedModel, Provisionable):
