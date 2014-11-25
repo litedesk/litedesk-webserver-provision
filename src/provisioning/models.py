@@ -17,6 +17,7 @@
 
 import os
 import logging
+import datetime
 from urlparse import urlparse
 
 from autoslug import AutoSlugField
@@ -27,12 +28,12 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from litedesk.lib import airwatch
-from model_utils import Choices
 from model_utils.managers import InheritanceManager
-from model_utils.models import TimeStampedModel, TimeFramedModel, StatusModel
+from model_utils.models import TimeStampedModel, TimeFramedModel
 from qrcode.image.pure import PymagingImage
 import qrcode
 
+from audit.models import Trackable
 from catalog.models import Offer
 from contrib.models import PropertyTable
 from tenants.models import Tenant, TenantService, User
@@ -59,9 +60,11 @@ class TenantProvisionable(PropertyTable):
     tenant = models.ForeignKey(Tenant)
     offer = models.ForeignKey(Offer)
 
+    class Meta:
+        unique_together = ('tenant', 'offer')
 
-class UserProvisionable(TimeStampedModel, StatusModel):
-    STATUS = Choices('staged', 'processing', 'active')
+
+class UserProvisionable(TimeStampedModel):
     user = models.ForeignKey(User)
     service = models.ForeignKey(TenantService)
     item_type = models.ForeignKey(ContentType)
@@ -79,9 +82,52 @@ class UserProvisionable(TimeStampedModel, StatusModel):
         unique_together = ('user', 'service', 'item_type', 'object_id')
 
 
-class UserProvisionHistory(TimeFramedModel):
+class UserProvisionHistory(Trackable, TimeFramedModel):
     user = models.ForeignKey(User)
-    offer = models.ForeignKey(Offer)
+    service = models.ForeignKey(TenantService)
+    offer = models.ForeignKey(Offer, null=True)
+    item_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    item = GenericForeignKey('item_type', 'object_id')
+
+    @staticmethod
+    def on_provision(*args, **kw):
+        user = kw.get('user')
+        provisioned_item = kw.get('instance')
+        item_type = ContentType.objects.get_for_model(provisioned_item)
+        try:
+            offer = TenantProvisionable.objects.get(
+                tenant=user.tenant,
+                offer__item_type=item_type,
+                offer__object_id=provisioned_item.id
+                ).offer
+        except TenantProvisionable.DoesNotExist:
+            offer = None
+
+        entry = UserProvisionHistory(
+            user=user,
+            service=kw.get('service'),
+            item_type=item_type,
+            object_id=provisioned_item.id,
+            offer=offer,
+            start=datetime.datetime.now()
+            )
+        entry.save(editor=kw.get('editor'))
+
+    @staticmethod
+    def on_deprovision(*args, **kw):
+        user = kw.get('user')
+        provisioned_item = kw.get('instance')
+        item_type = ContentType.objects.get_for_model(provisioned_item)
+
+        for entry in user.userprovisionhistory_set.filter(
+                item_type=item_type,
+                object_id=provisioned_item.id,
+                service=kw.get('service'),
+                end__isnull=True
+                ):
+            entry.end = datetime.datetime.now()
+            entry.save(editor=kw.get('editor'))
 
 
 class Asset(TimeStampedModel, Provisionable):
@@ -491,6 +537,10 @@ class TenantServiceAsset(PropertyTable):
 
     class Meta:
         unique_together = ('service', 'asset')
+
+
+item_provisioned.connect(UserProvisionHistory.on_provision, dispatch_uid='provision')
+item_deprovisioned.connect(UserProvisionHistory.on_deprovision, dispatch_uid='deprovision')
 
 
 if not getattr(settings, 'PROVISIONABLE_SERVICES'):
