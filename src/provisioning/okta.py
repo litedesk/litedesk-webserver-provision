@@ -31,7 +31,6 @@ ERROR_RESPONSES = {
         }
     }
 
-
 def check_for_error(response, key, exception):
     try:
         response.raise_for_status()
@@ -115,7 +114,6 @@ class Client(object):
             kw['data'] = json.dumps(data)
 
         full_url = 'https://%s.okta.com/api/v1/%s' % (self.domain, url)
-
         return {
             'GET': self._session.get,
             'PUT': self._session.put,
@@ -140,7 +138,7 @@ class Client(object):
         application.assign_to_user(user, profile=profile)
 
     def get_users(self):
-        response = self._make_request('users')
+        response = self._make_request('users', method='GET')
         response.raise_for_status()
         return response.json()
 
@@ -173,4 +171,21 @@ class Client(object):
         url = 'users/%s/lifecycle/activate' % user.id
         response = self._make_request(url, method='POST', params=params)
         check_for_error(response, 'ALREADY_ACTIVATED', UserAlreadyActivatedError)
+        return response.json()
+
+    def expire_password(self, user, tmp_passwd=False):
+        url = 'users/{0}/lifecycle/expire_password?tempPassword={1}'.format(user.id, 'true' if tmp_passwd else 'false')
+        response = self._make_request(url, method='POST')
+        response.raise_for_status()
+        return response.json()
+
+    def last_sso_event(self, user, app):
+        params = {'filter': 'action.objectType eq "app.auth.sso" and target.id eq "%s" and target.id eq "%s"' % (user, app) }
+        response = self._make_request('events', method='GET', params=params)
+        response.raise_for_status()
+        return response.json()[-1]
+
+    def user_applications(self, user):
+        response = self._make_request('apps', method='GET', params={'filter': 'user.id eq "%s"' % (user.id)})
+        response.raise_for_status()
         return response.json()

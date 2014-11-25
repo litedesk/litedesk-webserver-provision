@@ -57,9 +57,9 @@
                         <table cellpadding="13" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
                           <tbody>
                             <tr valign="top">
-                              <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121);">
-                                <table cellpadding="15">
-                                  <tr><td>
+                              <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121); padding-bottom: 0px;">
+                                <table cellpadding="15" width="100%">
+                                  <tr><td style="padding-bottom: 0px;">
                                     {% block access_information_message %}
                                     {% endblock %}
                                   </td></tr>
@@ -70,6 +70,29 @@
                         </table>
                       </td>
                     </tr>
+                    {% if include_additional_information_message %}
+                    <tr>
+                    <td valign="top" bgcolor="#ffffff">
+                      <table cellpadding="30" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
+                        <tbody>
+                          <tr valign="top">
+                            <td valign="top" style="line-height: 150%; color: rgb(255, 255, 255); padding-bottom:0px;">
+                              <div style="color: rgb(102, 102, 102);">
+                                <span style="font-size: 14px; line-height: 150%;">
+                                  <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 130%;">
+                                    {% block additional_information_message %}
+                                    {% endblock %}
+                                  </span>
+                                </span>
+                                <br />
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    {% endif %}
                     <tr>
                       <td valign="top" bgcolor="#ffffff">
                         <table cellpadding="30" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">

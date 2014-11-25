@@ -9,6 +9,7 @@ deployment_settings.py
 deployment.wsgi
 
 djcelery
+.idea
 /etc/*.conf
 /etc/*.ini
 /bin

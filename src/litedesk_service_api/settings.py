@@ -16,6 +16,8 @@
 # limitations under the License.
 
 # Application definition
+import os
+
 DJANGO_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,11 +66,35 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = False
 
+# Some important directories
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import os
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+LOG_DIR = os.path.join(BASE_DIR, 'log')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
+STATICFILES_DIRS = [
+    os.path.abspath(os.path.join(BASE_DIR, 'static')),
+]
+
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'media'))
+
+# Databases
+
+# Database
+# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'app.db')
+    }
+}
 
 
 # REST-framework
@@ -82,13 +108,10 @@ PROVISIONABLE_SERVICES = [
     'provisioning.models.AirWatch'
     ]
 
-try:
-    from local_settings import *
-except ImportError:
-    from deployment_settings import *
+from local_settings import *
 
 
-### Logging Configuration ###
+# Logging Configuration
 LOGGING = {
     'version': 1,
     'formatters': {
