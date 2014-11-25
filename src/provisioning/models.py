@@ -104,11 +104,14 @@ class Asset(TimeStampedModel, Provisionable):
     desktop = models.BooleanField(default=False)
 
     @property
+    def __subclassed__(self):
+        return Asset.objects.get_subclass(id=self.id)
+
+    @property
     def supported_platforms(self):
         return [p for p in ['web', 'mobile', 'desktop'] if getattr(self, p)]
 
     def provision(self, service, user, editor=None):
-        log.debug('Provisioning %s for user %s on %s' % (self, user, service))
         if self.can_be_managed_by(service):
             UserProvisionable.objects.create(
                 service=service,
@@ -160,13 +163,13 @@ class Device(Asset):
     image = models.ImageField(null=True, blank=True)
 
     @property
-    def __subclass__(self):
+    def __subclassed__(self):
         if 'chrome' in self.name.lower():
             self.__class__ = ChromeDevice
         return self
 
     def _get_email_template_parameters(self, service, user):
-        device = self.__subclass__
+        device = self.__subclassed__
         if isinstance(device, ChromeDevice):
             return {
                 'user': user,
@@ -183,7 +186,7 @@ class Device(Asset):
             'html': 'html'
         }.get(format, format)
         template_name = None
-        if isinstance(self.__subclass__, ChromeDevice):
+        if isinstance(self.__subclassed__, ChromeDevice):
             template_name = 'activation_chromebook'
 
         return template_name and 'provisioning/mail/%s/%s.tmpl.%s' % (
@@ -192,10 +195,10 @@ class Device(Asset):
 
     def provision(self, service, user, editor=None):
         super(Device, self).provision(service, user, editor=editor)
-        
+
         html_template = self._get_email_template(service, format='html')
         text_template = self._get_email_template(service, format='text')
-        
+
         if not (html_template or text_template):
             return
 

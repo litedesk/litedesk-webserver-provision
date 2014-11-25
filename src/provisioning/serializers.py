@@ -180,8 +180,14 @@ class UserProvisionSerializer(serializers.ModelSerializer):
         selected = self.object._provision_data.get(field_name)
         current = self.object.get_provisioned_items(item_class=item_class, service=service)
 
-        to_add = [it for it in selected if it not in current]
-        to_remove = [it for it in current if it not in selected]
+        to_add = [
+            item for item in [it.__subclassed__ for it in selected if it not in current]
+            if item.can_be_managed_by(service)
+        ]
+        to_remove = [
+            item for item in [it.__subclassed__ for it in current if it not in selected]
+            if item.can_be_managed_by(service)
+        ]
 
         for item in to_add:
             log.debug('Adding %s to %s' % (item, service))

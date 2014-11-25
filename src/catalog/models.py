@@ -62,7 +62,7 @@ class Offer(TimeStampedModel):
         return '%s%s' % (self.currency, self.price)
 
     @property
-    def __subclass__(self):
+    def __subclassed__(self):
         return Offer.objects.get_subclass(id=self.id)
 
     def activate(self):

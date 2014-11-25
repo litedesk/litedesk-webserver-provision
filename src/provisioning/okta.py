@@ -31,6 +31,7 @@ ERROR_RESPONSES = {
         }
     }
 
+
 def check_for_error(response, key, exception):
     try:
         response.raise_for_status()
@@ -174,18 +175,27 @@ class Client(object):
         return response.json()
 
     def expire_password(self, user, tmp_passwd=False):
-        url = 'users/{0}/lifecycle/expire_password?tempPassword={1}'.format(user.id, 'true' if tmp_passwd else 'false')
+        url = 'users/{0}/lifecycle/expire_password?tempPassword={1}'.format(
+            user.id,
+            str(tmp_passwd).lower()
+            )
         response = self._make_request(url, method='POST')
         response.raise_for_status()
         return response.json()
 
     def last_sso_event(self, user, app):
-        params = {'filter': 'action.objectType eq "app.auth.sso" and target.id eq "%s" and target.id eq "%s"' % (user, app) }
+        filter_strings = [
+            'action.objectType eq "app.auth.sso"',
+            'target.id eq "%s"' % user,
+            'target.id eq "%s"' % app
+            ]
+        params = {'filter': ' and '.join(filter_strings)}
         response = self._make_request('events', method='GET', params=params)
         response.raise_for_status()
         return response.json()[-1]
 
     def user_applications(self, user):
-        response = self._make_request('apps', method='GET', params={'filter': 'user.id eq "%s"' % (user.id)})
+        params = {'filter': 'user.id eq "%s"' % (user.id)}
+        response = self._make_request('apps', method='GET', params=params)
         response.raise_for_status()
         return response.json()

@@ -154,7 +154,7 @@ class TenantService(models.Model):
     api_token = models.CharField(max_length=128)
 
     @property
-    def __subclass__(self):
+    def __subclassed__(self):
         return TenantService.objects.get_subclass(id=self.id)
 
     @property
@@ -163,7 +163,7 @@ class TenantService(models.Model):
 
     @property
     def type(self):
-        return self.__subclass__.PLATFORM_TYPE
+        return self.__subclassed__.PLATFORM_TYPE
 
     @property
     def name(self):

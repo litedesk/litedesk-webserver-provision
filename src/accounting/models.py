@@ -19,7 +19,6 @@ import datetime
 import hashlib
 
 from django.db import models
-from django.db.models import signals
 from django.core.exceptions import ValidationError
 from jsonfield import JSONField
 from model_utils import Choices
@@ -58,7 +57,7 @@ class Contract(TimeStampedModel):
             raise ValidationError(message)
 
     def execute(self, signee):
-        for payment in self.offer.__subclass__.make_payments():
+        for payment in self.offer.__subclassed__.make_payments():
             charge = Charge(
                 tenant=self.tenant,
                 contract=self,
