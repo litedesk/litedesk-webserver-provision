@@ -45,7 +45,7 @@ class Command(BaseCommand):
         result['okta']['applications'] = []
         okta_apps = client.user_applications(okta_user)
         for app in okta_apps:
-            result['okta']['applications'].append({"name": app['name'],"status":app['status']})
+            result['okta']['applications'].append(app['name'])
         airwatch_service = AirWatch.objects.all().get()
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
@@ -57,5 +57,5 @@ class Command(BaseCommand):
             for asset in aw_assets:
                 group_id = asset.metadata['group_id']
                 if options["username"] in group.UserGroup.usernames_by_group_id(airwatch_client, group_id):
-                    result['airwatch']['applications'].append({"name":asset.asset.name})
+                    result['airwatch']['applications'].append(asset.asset.name)
         self.stdout.write(json.dumps(result))
