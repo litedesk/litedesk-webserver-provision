@@ -24,6 +24,7 @@ import httplib2
 from apiclient import errors
 from apiclient.discovery import build
 from dateutil import parser
+from django.contrib.contenttypes.models import ContentType
 
 
 class Command(BaseCommand):
@@ -59,12 +60,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tenant = models.Tenant.objects.get(pk=options['tenant'])
         okta_item = models.Okta.objects.get(tenant=tenant)
-        users = okta_item.userplatform_set.all()
+        users = models.User.objects.filter(services=okta_item)
         self.stdout.write("Okta users in database.")
         user_dict = {}
         for user in users:
-            username = '%s@%s' % (user.user.username, tenant.email_domain)
-            user_dict[username] = {'username': user.user.username}
+            username = '%s@%s' % (user.username, tenant.email_domain)
+            user_dict[username] = {'username': user.username}
             self.stdout.write(username)
 
         if not options['skip-okta']:
@@ -98,17 +99,18 @@ class Command(BaseCommand):
             self.stdout.write("Get Okta SSO events.")
             okta_client = okta_service.get_client()
 
-            usersoftwares = models.UserSoftware.objects.filter(
-                user__tenant=tenant)
+            software_contenttype = ContentType.objects.get_for_model(models.Software)
+            usersoftwares = models.UserProvisionable.objects.filter(
+                user__tenant=tenant, item_type=software_contenttype)
             for usersoftware in usersoftwares:
-                oktatenantservice = usersoftware.software.tenantserviceasset_set.get(
+                oktatenantservice = usersoftware.item.tenantserviceasset_set.get(
                     service=okta_service)
                 event = okta_client.last_sso_event(
                     user_dict[usersoftware.user.tenant_email]['okta_id'],
                     oktatenantservice.get('application_id'))
                 self.stdout.write(
                     '%s - %s -> %s' % (usersoftware.user.tenant_email,
-                                       usersoftware.software, event['published']))
+                                       usersoftware.item.name, event and event['published'] or "never"))
 
         if not options['skip-google']:
             # Get Google lastseen
