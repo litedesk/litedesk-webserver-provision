@@ -15,6 +15,7 @@ python-dateutil
 python-memcached
 python-money
 qrcode
+jsonfield
 
 git+https://github.com/ojii/pymaging.git#egg=pymaging
 git+https://github.com/ojii/pymaging-png.git#egg=pymaging-png
