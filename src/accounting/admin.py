@@ -24,15 +24,11 @@ import models
 
 @admin.register(models.Charge)
 class ChargeAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = (
-        'code', 'tenant', 'item', 'amount', 'currency', 'amount_paid',
-        'created', 'due_on', 'paid_on', 'status'
-        )
-    list_filter = ('tenant', 'status',)
-    search_fields = ('code', 'due_on')
+    list_display = ('user', 'item', 'amount', 'currency',)
+    search_fields = ('user__username', )
 
 
 @admin.register(models.Contract)
 class ContractAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'active', 'offer', 'item')
-    list_filter = ('tenant', 'active')
+    list_display = ('tenant', 'offer', 'item', 'start', 'end')
+    list_filter = ('tenant', )
