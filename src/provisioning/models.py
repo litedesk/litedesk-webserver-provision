@@ -34,7 +34,6 @@ from qrcode.image.pure import PymagingImage
 import qrcode
 
 from audit.models import Trackable
-from catalog.models import Offer
 from contrib.models import PropertyTable
 from tenants.models import Tenant, TenantService, User
 
@@ -54,14 +53,6 @@ class Provisionable(object):
 
     def provision(self, service, user, *args, **kw):
         raise NotImplementedError
-
-
-class TenantProvisionable(PropertyTable):
-    tenant = models.ForeignKey(Tenant)
-    offer = models.ForeignKey(Offer)
-
-    class Meta:
-        unique_together = ('tenant', 'offer')
 
 
 class UserProvisionable(TimeStampedModel):
@@ -85,7 +76,6 @@ class UserProvisionable(TimeStampedModel):
 class UserProvisionHistory(Trackable, TimeFramedModel):
     user = models.ForeignKey(User)
     service = models.ForeignKey(TenantService)
-    offer = models.ForeignKey(Offer, null=True)
     item_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     item = GenericForeignKey('item_type', 'object_id')
@@ -95,21 +85,12 @@ class UserProvisionHistory(Trackable, TimeFramedModel):
         user = kw.get('user')
         provisioned_item = kw.get('instance')
         item_type = ContentType.objects.get_for_model(provisioned_item)
-        try:
-            offer = TenantProvisionable.objects.get(
-                tenant=user.tenant,
-                offer__item_type=item_type,
-                offer__object_id=provisioned_item.id
-                ).offer
-        except TenantProvisionable.DoesNotExist:
-            offer = None
 
         entry = UserProvisionHistory(
             user=user,
             service=kw.get('service'),
             item_type=item_type,
             object_id=provisioned_item.id,
-            offer=offer,
             start=datetime.datetime.now()
             )
         entry.save(editor=kw.get('editor'))

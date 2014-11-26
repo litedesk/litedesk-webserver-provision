@@ -62,6 +62,10 @@ class Offer(TimeStampedModel):
         return '%s%s' % (self.currency, self.price)
 
     @property
+    def monthly_cost(self):
+        return 0
+
+    @property
     def __subclassed__(self):
         return Offer.objects.get_subclass(id=self.id)
 
@@ -85,10 +89,6 @@ class Offer(TimeStampedModel):
             self.status = self.STATUS.suspended
             self.save()
 
-    def make_payments(self, start_date=None, end_date=None):
-        yield Payment(self.price, self.currency, due_date=start_date)
-        raise StopIteration
-
     def __unicode__(self):
         return '%s (%s)' % (self.item, self.price_string)
 
@@ -100,32 +100,16 @@ class Subscription(Offer):
     def price_string(self):
         return '%s%s/%s' % (self.currency, self.price, self.period)
 
-    def make_payments(self, start_date=None, end_date=None):
-        start_date = start_date or datetime.datetime.now()
-        end_date = end_date or start_date + relativedelta(years=1)
-        if start_date >= end_date:
-            raise ValueError('Subscription start date is set to after it ends.')
-        payment_date = start_date
-        interval = {
-            SUBSCRIPTION_PERIODS.day: relativedelta(days=1),
-            SUBSCRIPTION_PERIODS.week: relativedelta(days=7),
-            SUBSCRIPTION_PERIODS.month: relativedelta(months=1),
-            SUBSCRIPTION_PERIODS.year: relativedelta(years=1)
+    @property
+    def monthly_cost(self):
+        return self.price * {
+            SUBSCRIPTION_PERIODS.day: 30,
+            SUBSCRIPTION_PERIODS.week: float(52/12),
+            SUBSCRIPTION_PERIODS.month: 1,
+            SUBSCRIPTION_PERIODS.year: float(1/12)
             }[self.period]
-
-        while payment_date < end_date:
-            payment_date += interval
-            yield Payment(self.price, self.currency, due_date=payment_date)
-
-        raise StopIteration
 
 
 class Product(Offer):
     pass
 
-
-class Payment(object):
-    def __init__(self, amount, currency, due_date=None):
-        self.amount = amount
-        self.currency = currency
-        self.due_date = due_date or datetime.datetime.now()
