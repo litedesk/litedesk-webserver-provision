@@ -39,6 +39,7 @@ from tenants.models import Tenant, TenantService, User
 
 import okta
 from signals import item_provisioned, item_deprovisioned
+from jsonfield import JSONCharField
 
 
 log = logging.getLogger(__name__)
@@ -234,6 +235,28 @@ class Device(Asset):
 
     def activate(self, user, *args, **kw):
         pass
+
+
+class SKU(models.Model):
+    device = models.ForeignKey(Device)
+    tenant = models.ForeignKey(Tenant)
+    identifier = JSONCharField(max_length=2000)
+
+class InventoryEntry(Trackable):
+    HANDEDOUT = 'OUT'
+    RETURNED = 'RET'
+    DIRECTION_CHOICES = (
+        (HANDEDOUT, 'handed out'),
+        (RETURNED, 'returned')
+    )
+    sku = models.ForeignKey(SKU)
+    user = models.ForeignKey(User)
+    direction = models.CharField(
+        max_length=3,
+        choices=DIRECTION_CHOICES,
+        default=HANDEDOUT
+        )
+
 
 
 class MobileDataPlan(Asset):

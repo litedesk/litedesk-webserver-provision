@@ -2,14 +2,16 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import jsonfield.fields
 import django.utils.timezone
+import jsonfield.fields
 import model_utils.fields
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('tenants', '0001_initial'),
+        ('catalog', '0001_initial'),
     ]
 
     operations = [
@@ -19,14 +21,11 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('status', model_utils.fields.StatusField(default=b'scheduled', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'scheduled', b'scheduled'), (b'waived', b'waived'), (b'pending', b'pending'), (b'paid', b'paid')])),
-                ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
-                ('code', models.CharField(unique=True, max_length=30)),
+                ('start_date', models.DateField()),
+                ('end_date', models.DateField()),
                 ('amount', models.DecimalField(max_digits=10, decimal_places=2)),
                 ('currency', models.CharField(max_length=50, choices=[(b'EUR', b'Euro'), (b'USD', b'US Dollar')])),
-                ('amount_paid', models.DecimalField(null=True, max_digits=10, decimal_places=2, blank=True)),
-                ('due_on', models.DateTimeField()),
-                ('paid_on', models.DateTimeField(null=True)),
+                ('category', models.CharField(max_length=50, choices=[(b'platform', b'platform'), (b'software', b'software'), (b'devices', b'devices'), (b'other', b'other')])),
             ],
             options={
                 'abstract': False,
@@ -37,14 +36,28 @@ class Migration(migrations.Migration):
             name='Contract',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
-                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('active', models.BooleanField(default=True)),
-                ('extra', jsonfield.fields.JSONField(default=dict)),
+                ('start', models.DateTimeField(null=True, verbose_name='start', blank=True)),
+                ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
+                ('quantity', models.PositiveIntegerField(default=1)),
+                ('extra', jsonfield.fields.JSONField()),
+                ('offer', models.ForeignKey(to='catalog.Offer')),
+                ('tenant', models.ForeignKey(to='tenants.Tenant')),
             ],
             options={
                 'abstract': False,
             },
             bases=(models.Model,),
+        ),
+        migrations.AddField(
+            model_name='charge',
+            name='contract',
+            field=models.ForeignKey(to='accounting.Contract'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='charge',
+            name='user',
+            field=models.ForeignKey(to='tenants.User'),
+            preserve_default=True,
         ),
     ]
