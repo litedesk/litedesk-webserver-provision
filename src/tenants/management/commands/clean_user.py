@@ -15,27 +15,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import logging
 
+from django.contrib.auth.models import User as DjangoUser
 from django.core.management.base import BaseCommand
 from optparse import make_option
 from tenants.models import User
-import json
+
+
+log = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'anasigns all assests from a the username.'
+    help = 'Unassigns all assets from a user.'
     option_list = BaseCommand.option_list + (
-        make_option('--username',
-                    default="bruce.wayne",
-                    help='Username to find. Default="bruce.wayne"'),
+        make_option('--username', dest='user', help='Username of target user'),
         )
 
-    # TODO: change this when raphael finishes with his refactoring
     def handle(self, *args, **options):
-        user = User.objects.filter(username=options["username"]).get()
-        editor = user.tenant.primary_contact
-        for us in user.software.current():
-            us.deprovision(editor=editor)
-        self.stdout.write("user is now clean")
+        username = options.get('user')
 
+        if not username:
+            sys.exit('Username not provided')
 
+        user = User.objects.get(username=username)
+        editor = DjangoUser.objects.filter(is_superuser=True)[0]
+
+        for up in list(user.userprovisionable_set.all()):
+            service = up.service.__subclassed__
+            log.info('Deprovisioning %s on %s' % (up.item, service))
+            up.item.deprovision(service, user, editor=editor)
+
+        for service in user.services.select_subclasses():
+            service.deactivate(user)
