@@ -22,7 +22,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, m2m_changed
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -339,6 +339,16 @@ class User(Trackable, Synchronizable):
     def get_remote_last_modified(cls, remote_object):
         return datetime.datetime.strptime(remote_object.when_changed, '%Y%m%d%H%M%S.%fZ')
 
+    @staticmethod
+    def on_service_provision(sender, **kw):
+        action = kw.get('action')
+        user = kw.get('instance')
+        model = kw.get('model')
+        if action == 'post_add':
+            services = model.objects.filter(id__in=kw.get('pk_set')).select_subclasses()
+            for service in services:
+                service.activate(user)
+
     class Meta:
         unique_together = ('tenant', 'username')
 
@@ -357,3 +367,4 @@ class UserGroup(models.Model):
 
 # Signals
 post_save.connect(TenantService.on_user_creation, dispatch_uid='user_add', sender=User)
+m2m_changed.connect(User.on_service_provision, sender=User.services.through)
