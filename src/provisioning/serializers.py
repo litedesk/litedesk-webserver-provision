@@ -230,10 +230,10 @@ class UserSummarySerializer(serializers.ModelSerializer):
     platforms = serializers.SerializerMethodField('get_user_platforms')
     display_name = serializers.CharField()
 
-    def _serialize_asset(self, key, value):
+    def _serialize_asset(self, asset):
         return {
-            'id': key,
-            'name': value
+            'id': asset.id,
+            'name': asset.name
             }
 
     def get_user_devices(self, obj):
