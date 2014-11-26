@@ -48,4 +48,7 @@ class Command(BaseCommand):
             up.item.deprovision(service, user, editor=editor)
 
         for service in user.services.select_subclasses():
-            service.deactivate(user)
+            try:
+                service.deactivate(user)
+            except Exception, why:
+                log.warn('Error when deactivating %s: %s' % (service, why))
