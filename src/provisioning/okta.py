@@ -192,7 +192,11 @@ class Client(object):
         params = {'filter': ' and '.join(filter_strings)}
         response = self._make_request('events', method='GET', params=params)
         response.raise_for_status()
-        return response.json()[-1]
+        json = response.json()
+        if len(json) == 0:
+            return None
+        else:
+            return json[-1]
 
     def user_applications(self, user):
         params = {'filter': 'user.id eq "%s"' % (user.id)}
