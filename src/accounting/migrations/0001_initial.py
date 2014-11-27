@@ -10,8 +10,6 @@ import model_utils.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tenants', '0001_initial'),
-        ('catalog', '0001_initial'),
     ]
 
     operations = [
@@ -40,24 +38,10 @@ class Migration(migrations.Migration):
                 ('end', models.DateTimeField(null=True, verbose_name='end', blank=True)),
                 ('quantity', models.PositiveIntegerField(default=1)),
                 ('extra', jsonfield.fields.JSONField()),
-                ('offer', models.ForeignKey(to='catalog.Offer')),
-                ('tenant', models.ForeignKey(to='tenants.Tenant')),
             ],
             options={
                 'abstract': False,
             },
             bases=(models.Model,),
-        ),
-        migrations.AddField(
-            model_name='charge',
-            name='contract',
-            field=models.ForeignKey(to='accounting.Contract'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='charge',
-            name='user',
-            field=models.ForeignKey(to='tenants.User'),
-            preserve_default=True,
         ),
     ]
