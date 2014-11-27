@@ -76,3 +76,16 @@ class UserProvisionableAdmin(admin.ModelAdmin):
 class LastSeenEvent(admin.ModelAdmin):
     list_display = ('user', 'item', 'last_seen', 'created')
     search_fields = ('user__username', )
+
+
+@admin.register(models.SKU)
+class SKU(admin.ModelAdmin):
+    list_display = ('device', 'identifier')
+    # search_fields = ('sku__identifier')
+
+
+@admin.register(models.InventoryEntry)
+class InventoryEntry(admin.ModelAdmin):
+    list_display = ('sku', 'user', 'status')
+    search_fields = ('sku__device__name',)
+    list_filter = ('status', )
