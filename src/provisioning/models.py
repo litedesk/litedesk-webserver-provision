@@ -543,6 +543,14 @@ class TenantServiceAsset(PropertyTable):
         unique_together = ('service', 'asset')
 
 
+class LastSeenEvent(TimeStampedModel):
+    user = models.ForeignKey(User)
+    item_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    item = GenericForeignKey('item_type', 'object_id')
+    last_seen = models.DateTimeField()
+
+
 item_provisioned.connect(UserProvisionHistory.on_provision, dispatch_uid='provision')
 item_deprovisioned.connect(UserProvisionHistory.on_deprovision, dispatch_uid='deprovision')
 

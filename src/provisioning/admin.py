@@ -70,3 +70,9 @@ class UserProvisionableAdmin(admin.ModelAdmin):
     list_display = ('user', 'item', )
     list_filter = ('item_type', )
     search_fields = ('user__username', )
+
+
+@admin.register(models.LastSeenEvent)
+class LastSeenEvent(admin.ModelAdmin):
+    list_display = ('user', 'item', 'last_seen', 'created')
+    search_fields = ('user__username', )
