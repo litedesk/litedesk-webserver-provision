@@ -28,18 +28,17 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from litedesk.lib import airwatch
+from model_utils import Choices
 from model_utils.managers import InheritanceManager
-from model_utils.models import TimeStampedModel, TimeFramedModel
+from model_utils.models import TimeStampedModel, TimeFramedModel, StatusModel
 from qrcode.image.pure import PymagingImage
 import qrcode
 
 from audit.models import Trackable
 from contrib.models import PropertyTable
 from tenants.models import Tenant, TenantService, User
-
-import okta
 from signals import item_provisioned, item_deprovisioned
-from jsonfield import JSONCharField
+import okta
 
 
 log = logging.getLogger(__name__)
@@ -240,23 +239,13 @@ class Device(Asset):
 class SKU(models.Model):
     device = models.ForeignKey(Device)
     tenant = models.ForeignKey(Tenant)
-    identifier = JSONCharField(max_length=2000)
+    identifier = models.CharField(max_length=100, null=True, blank=True)
 
-class InventoryEntry(Trackable):
-    HANDEDOUT = 'OUT'
-    RETURNED = 'RET'
-    DIRECTION_CHOICES = (
-        (HANDEDOUT, 'handed out'),
-        (RETURNED, 'returned')
-    )
+
+class InventoryEntry(Trackable, StatusModel):
+    STATUS = Choices('handed_out', 'returned')
     sku = models.ForeignKey(SKU)
     user = models.ForeignKey(User)
-    direction = models.CharField(
-        max_length=3,
-        choices=DIRECTION_CHOICES,
-        default=HANDEDOUT
-        )
-
 
 
 class MobileDataPlan(Asset):

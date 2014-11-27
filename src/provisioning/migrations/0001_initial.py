@@ -66,7 +66,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('direction', models.CharField(default=b'OUT', max_length=3, choices=[(b'OUT', b'handed out'), (b'RET', b'returned')])),
+                ('status', model_utils.fields.StatusField(default=b'handed_out', max_length=100, verbose_name='status', no_check_for_status=True, choices=[(b'handed_out', b'handed_out'), (b'returned', b'returned')])),
+                ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, verbose_name='status changed', monitor='status')),
             ],
             options={
                 'abstract': False,
@@ -107,7 +108,7 @@ class Migration(migrations.Migration):
             name='SKU',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('identifier', jsonfield.fields.JSONCharField(max_length=2000)),
+                ('identifier', models.CharField(max_length=100, null=True, blank=True)),
                 ('device', models.ForeignKey(to='provisioning.Device')),
                 ('tenant', models.ForeignKey(to='tenants.Tenant')),
             ],
