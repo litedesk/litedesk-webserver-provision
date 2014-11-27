@@ -15,18 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from django.core.management.base import BaseCommand
-from provisioning import models
+import os
 from optparse import make_option
-from oauth2client.client import SignedJwtAssertionCredentials
-import httplib2
+
 from apiclient import errors
 from apiclient.discovery import build
 from dateutil import parser
-import datetime
-import pytz
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.management.base import BaseCommand
+from oauth2client.client import SignedJwtAssertionCredentials
+import httplib2
+import pytz
+
+from provisioning import models
 
 
 class Command(BaseCommand):
@@ -136,7 +138,10 @@ class Command(BaseCommand):
                 asset__name='Google Account')
 
             # Run through the OAuth flow and retrieve credentials
-            with open(google_tenant_asset.get('CERTIFICATE_FILE_PATH')) as f:
+            certificate_file_path = os.path.join(
+                settings.CERTIFICATES_DIR, google_tenant_asset.get('CERTIFICATE_FILE_NAME')
+                )
+            with open(certificate_file_path) as f:
                 private_key = f.read()
             credentials = SignedJwtAssertionCredentials(
                 google_tenant_asset.get('CLIENT_EMAIL'),
