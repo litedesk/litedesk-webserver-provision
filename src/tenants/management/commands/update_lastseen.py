@@ -24,6 +24,8 @@ import httplib2
 from apiclient import errors
 from apiclient.discovery import build
 from dateutil import parser
+import datetime
+import pytz
 from django.contrib.contenttypes.models import ContentType
 
 
@@ -57,60 +59,76 @@ class Command(BaseCommand):
                     help='Tenant id to do this for. Default=1'),
     )
 
+    def _parseDateTime(self, stamp):
+        parsed = parser.parse(stamp)
+        utc = parsed.astimezone(pytz.utc)
+        stripped = utc.replace(tzinfo=None)
+        return stripped
+
     def handle(self, *args, **options):
         tenant = models.Tenant.objects.get(pk=options['tenant'])
         okta_item = models.Okta.objects.get(tenant=tenant)
         users = models.User.objects.filter(services=okta_item)
+        software_contenttype = ContentType.objects.get_for_model(
+            models.Software)
+        google_software = models.Software.objects.get(name='Google Account')
+        device_contenttype = ContentType.objects.get_for_model(
+            models.Device)
+
         self.stdout.write("Okta users in database.")
         user_dict = {}
         for user in users:
             username = '%s@%s' % (user.username, tenant.email_domain)
-            user_dict[username] = {'username': user.username}
+            user_dict[username] = {'username': user.username, 'user': user}
             self.stdout.write(username)
 
         if not options['skip-okta']:
             self.stdout.write("")
             self.stdout.write("Get Okta user logins.")
-            okta_service = models.Okta.objects.get(tenant=options['tenant'])
-            okta_users = okta_service.get_users()
 
+            okta_users = okta_item.get_users()
+            okta_item_type = ContentType.objects.get_for_model(okta_item)
             for okta_user in okta_users:
-                self.stdout.write(
-                    '%s - %s' % (okta_user['profile']
-                                 ['login'], okta_user['lastLogin']),
-                    ending='')
-                if okta_user['profile']['login'] in user_dict:
-                    self.stdout.write(' SAVE')
-                    user_dict[okta_user['profile']['login']].update({
-                        'okta_last_login': okta_user['lastLogin'],
-                        'okta_id': okta_user['id']})
-                else:
-                    self.stdout.write('')
-
-            # Update Okta login
-            # for it in okta_provisionables:
-            #     it_username = '%s@%s' % (it.user.username, tenant.email_domain)
-            #     if it_username in user_dict:
-            #         self.stdout.write('%s Okta -> %s' %
-            #                           (it_username, user_dict[it_username]['last_login']))
+                okta_username = okta_user['profile']['login']
+                if okta_username in user_dict:
+                    user_dict[okta_username].update(
+                        {'okta_id': okta_user['id']})
+                    if okta_user['lastLogin']:
+                        models.LastSeenEvent.objects.create(
+                            user=user_dict[okta_username]['user'],
+                            item_type=okta_item_type,
+                            object_id=okta_item.id,
+                            last_seen=self._parseDateTime(okta_user['lastLogin']))
+                        self.stdout.write(
+                            '%s - %s' % (okta_username, okta_user['lastLogin']))
 
             # Get Okta application SSO events
             self.stdout.write("")
             self.stdout.write("Get Okta SSO events.")
-            okta_client = okta_service.get_client()
+            okta_client = okta_item.get_client()
 
-            software_contenttype = ContentType.objects.get_for_model(models.Software)
             usersoftwares = models.UserProvisionable.objects.filter(
-                user__tenant=tenant, item_type=software_contenttype)
+                user__tenant=tenant,
+                item_type=software_contenttype,
+                service=okta_item).exclude(
+                object_id=google_software.id)
+                # Google accoint login is done below directly from google
             for usersoftware in usersoftwares:
                 oktatenantservice = usersoftware.item.tenantserviceasset_set.get(
-                    service=okta_service)
+                    service=okta_item)
                 event = okta_client.last_sso_event(
                     user_dict[usersoftware.user.tenant_email]['okta_id'],
                     oktatenantservice.get('application_id'))
-                self.stdout.write(
-                    '%s - %s -> %s' % (usersoftware.user.tenant_email,
-                                       usersoftware.item.name, event and event['published'] or "never"))
+                if event:
+                    models.LastSeenEvent.objects.create(
+                        user=usersoftware.user,
+                        item_type=software_contenttype,
+                        object_id=usersoftware.object_id,
+                        last_seen=self._parseDateTime(event['published']))
+                    self.stdout.write(
+                        '%s - %s -> %s' % (usersoftware.user.tenant_email,
+                                           usersoftware.item.name,
+                                           event and event['published'] or "never"))
 
         if not options['skip-google']:
             # Get Google lastseen
@@ -156,8 +174,20 @@ class Command(BaseCommand):
                     break
 
             for user in all_users:
-                self.stdout.write(
-                    user['primaryEmail'] + " - " + user['lastLoginTime'])
+                if user['lastLoginTime'] == '1970-01-01T00:00:00.000Z':
+                    continue
+                if models.UserProvisionable.objects.filter(
+                        user__username=user['primaryEmail'].split('@')[0],
+                        user__tenant=tenant,
+                        item_type=software_contenttype,
+                        object_id=google_software.id).exists():
+                    models.LastSeenEvent.objects.create(
+                        user=user_dict[user['primaryEmail']]['user'],
+                        item_type=software_contenttype,
+                        object_id=google_software.id,
+                        last_seen=self._parseDateTime(user['lastLoginTime']))
+                    self.stdout.write(
+                        user['primaryEmail'] + " - " + user['lastLoginTime'])
 
             # Get Google Device lastseen information
             all_devices = []
@@ -180,16 +210,22 @@ class Command(BaseCommand):
 
             self.stdout.write("")
             self.stdout.write("Get Google Devices")
+            chromebook_device = models.Device.objects.get(name='Chromebook')
             for device in all_devices:
-                # self.stdout.write(
-                #     '%s - %s -> %s' %
-                # (device['recentUsers'][0]['email']
-                #    if device.has_key('recentUsers') else 'never used',
-                #                        device['serialNumber'],
-                #                        device['lastSync']))
-                self.stdout.write('%s - %s -> %s' % (device['annotatedUser'],
-                                                     device['serialNumber'],
-                                                     device['lastSync']))
+                if models.UserProvisionable.objects.filter(
+                        user__username=device['annotatedUser'].split('@')[0],
+                        user__tenant=tenant,
+                        item_type=device_contenttype,
+                        object_id=chromebook_device.id).exists():
+                    models.LastSeenEvent.objects.create(
+                        user=user_dict[device['annotatedUser']]['user'],
+                        item_type=device_contenttype,
+                        object_id=chromebook_device.id,
+                        last_seen=self._parseDateTime(device['lastSync']))
+                    self.stdout.write('%s - %s -> %s' % (device['annotatedUser'],
+                                                         device[
+                                                             'serialNumber'],
+                                                         device['lastSync']))
 
         if not options['skip-airwatch']:
             self.stdout.write("")
@@ -199,9 +235,14 @@ class Command(BaseCommand):
             airwatch_client = airwatch_item.get_client()
             endpoint = 'mdm/devices/search'
 
-            for user in user_dict:
+            iPad_device = models.Device.objects.get(name='iPad')
+            iPhone_device = models.Device.objects.get(name='iPhone')
+            airwatch_item_type = ContentType.objects.get_for_model(airwatch_item)
+
+            airwatch_users = models.User.objects.filter(services=airwatch_item)
+            for user in airwatch_users:
                 response = airwatch_client.call_api(
-                    'GET', endpoint, params={'user': user_dict[user]['username']})
+                    'GET', endpoint, params={'user': user.username})
                 response.raise_for_status()
                 if response.status_code == 200:
                     devices = response.json().get('Devices')
@@ -210,5 +251,23 @@ class Command(BaseCommand):
                         seen = parser.parse(device['LastSeen'])
                         if seen > newest_seen:
                             newest_seen = seen
-                        self.stdout.write("%s - %s -> %s" % (user, device['SerialNumber'], device['LastSeen']))
+                        if device['Model'].startswith(iPad_device.name):
+                            device_item = iPad_device
+                        elif device['Model'].startswith(iPhone_device.name):
+                            device_item = iPhone_device
+                        else:
+                            device_item = None
+                        models.LastSeenEvent.objects.create(
+                            user=user,
+                            item_type=device_contenttype,
+                            object_id=device_item.id,
+                            last_seen=seen)
+                        self.stdout.write(
+                            "%s - %s -> %s" % (user, device['SerialNumber'],
+                                               device['LastSeen']))
                     self.stdout.write("%s -> %s" % (user, newest_seen))
+                    models.LastSeenEvent.objects.create(
+                        user=user,
+                        item_type=airwatch_item_type,
+                        object_id=airwatch_item.id,
+                        last_seen=newest_seen)
