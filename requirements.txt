@@ -8,9 +8,12 @@ django-filter
 django-jsonfield
 django-model-utils
 django-picklefield
+google-api-python-client
 factory_boy
 mock
 pillow
+pycrypto
+pyopenssl
 python-dateutil
 python-memcached
 python-money
