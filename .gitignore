@@ -12,6 +12,7 @@ djcelery
 .idea
 /etc/*.conf
 /etc/*.ini
+/etc/**/*.p12
 /bin
 /include
 /lib
