@@ -45,6 +45,7 @@ log = logging.getLogger(__name__)
 
 
 class Provisionable(object):
+
     def activate(self, user, **kw):
         raise NotImplementedError
 
@@ -92,7 +93,7 @@ class UserProvisionHistory(Trackable, TimeFramedModel):
             item_type=item_type,
             object_id=provisioned_item.id,
             start=datetime.datetime.now()
-            )
+        )
         entry.save(editor=kw.get('editor'))
 
     @staticmethod
@@ -106,7 +107,7 @@ class UserProvisionHistory(Trackable, TimeFramedModel):
                 object_id=provisioned_item.id,
                 service=kw.get('service'),
                 end__isnull=True
-                ):
+        ):
             entry.end = datetime.datetime.now()
             entry.save(editor=kw.get('editor'))
 
@@ -135,14 +136,14 @@ class Asset(TimeStampedModel, Provisionable):
                 user=user,
                 item_type=ContentType.objects.get_for_model(self),
                 object_id=self.id
-                )
+            )
             item_provisioned.send(
                 sender=self.__class__,
                 editor=editor,
                 instance=self,
                 service=service,
                 user=user
-                )
+            )
 
     def deprovision(self, service, user, editor=None):
         UserProvisionable.objects.filter(
@@ -150,7 +151,7 @@ class Asset(TimeStampedModel, Provisionable):
             user=user,
             item_type=ContentType.objects.get_for_model(self),
             object_id=self.id
-            ).delete()
+        ).delete()
         item_deprovisioned.send(
             sender=self.__class__,
             editor=editor,
@@ -167,6 +168,7 @@ class Asset(TimeStampedModel, Provisionable):
 
 
 class Software(Asset):
+
     def provision(self, service, user, editor=None):
         service.assign(self, user)
         super(Software, self).provision(service, user, editor=editor)
@@ -194,7 +196,7 @@ class Device(Asset):
                 'site': settings.SITE,
                 'device': device,
                 'title': '%s - Welcome to Google' % settings.SITE.get('name')
-                }
+            }
         return None
 
     def _get_email_template(self, service, format='html'):
@@ -208,7 +210,7 @@ class Device(Asset):
 
         return template_name and 'provisioning/mail/%s/%s.tmpl.%s' % (
             format, template_name, extension
-            )
+        )
 
     def provision(self, service, user, editor=None):
         super(Device, self).provision(service, user, editor=editor)
@@ -241,11 +243,18 @@ class SKU(models.Model):
     tenant = models.ForeignKey(Tenant)
     identifier = models.CharField(max_length=100, null=True, blank=True)
 
+    def __unicode__(self):
+        return '%s (%s)' % (self.device.name, self.identifier)
+
 
 class InventoryEntry(Trackable, StatusModel):
     STATUS = Choices('handed_out', 'returned')
     sku = models.ForeignKey(SKU)
     user = models.ForeignKey(User)
+
+    def save(self, *args, **kwargs):
+        super(InventoryEntry, self).save(
+            editor=self.user.tenant.primary_contact, *args, **kwargs)
 
 
 class MobileDataPlan(Asset):
@@ -253,6 +262,7 @@ class MobileDataPlan(Asset):
 
 
 class ChromeDevice(Device):
+
     def can_be_managed_by(self, service):
         return service.type == TenantService.PLATFORM_TYPE_CHOICES.web
 
@@ -319,10 +329,10 @@ class Okta(TenantService, Provisionable):
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
-                )
+            )
             html_msg = render_to_string(
                 'provisioning/mail/html/activation_okta.tmpl.html', template_parameters
-                )
+            )
 
             send_mail(
                 '%s - Welcome to %s' % (settings.SITE.get('name'), self.name),
@@ -364,7 +374,7 @@ class Okta(TenantService, Provisionable):
     def get_serializer_data(cls, **data):
         return {
             'domain': data.get('domain')
-            }
+        }
 
     class Meta:
         verbose_name = 'Okta'
@@ -396,13 +406,14 @@ class AirWatch(TenantService, Provisionable):
     def api_server_domain(self):
         portal_domain = urlparse(self.server_url).netloc
         components = portal_domain.split('.')
-        if components[0] == 'as': components[0] = 'ds'
+        if components[0] == 'as':
+            components[0] = 'ds'
         return '.'.join(components)
 
     def get_client(self):
         return airwatch.client.Client(
             self.server_url, self.username, self.password, self.api_token
-            )
+        )
 
     def get_service_user(self, user):
         client = self.get_client()
@@ -450,10 +461,10 @@ class AirWatch(TenantService, Provisionable):
             }
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_airwatch.tmpl.txt', template_parameters
-                )
+            )
             html_msg = render_to_string(
                 'provisioning/mail/html/activation_airwatch.tmpl.html', template_parameters
-                )
+            )
 
             send_mail(
                 title,
@@ -475,7 +486,8 @@ class AirWatch(TenantService, Provisionable):
                 self.unassign(tenantserviceasset.asset, user)
 
     def assign(self, software, user):
-        if self.type not in software.supported_platforms: return
+        if self.type not in software.supported_platforms:
+            return
 
         log.debug('Assigning %s to %s on Airwatch' % (software, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
@@ -486,7 +498,8 @@ class AirWatch(TenantService, Provisionable):
             pass
 
     def unassign(self, software, user):
-        if self.type not in software.supported_platforms: return
+        if self.type not in software.supported_platforms:
+            return
 
         log.debug('Removing %s from %s on Airwatch' % (software, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
@@ -503,7 +516,7 @@ class AirWatch(TenantService, Provisionable):
             'password': data.get('password'),
             'server_url': data.get('server_url'),
             'group_id': data.get('group_id')
-            }
+        }
 
     class Meta:
         verbose_name = 'AirWatch'
