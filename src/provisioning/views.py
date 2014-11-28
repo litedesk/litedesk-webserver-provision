@@ -25,7 +25,7 @@ from rest_framework.response import Response
 
 from tenants import permissions
 from tenants.models import TenantService, User
-
+from google import Client
 import models
 import serializers
 
@@ -120,5 +120,6 @@ class AvailableDeviceListView(APIView):
         Return a list of all Available Devices.
         """
         airwatch_item = models.AirWatch.objects.get(tenant=request.user.tenant)
-        devices = airwatch_item.get_available_devices()
+        google_client = Client(request.user.tenant)
+        devices = airwatch_item.get_available_devices() + google_client.get_available_devices()
         return Response(devices)

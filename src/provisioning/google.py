@@ -49,6 +49,10 @@ class Client(object):
         http = httplib2.Http()
         http = credentials.authorize(http)
         self.directory_service = build('admin', 'directory_v1', http=http)
+        self.administrator_username = google_tenant_asset.get('ADMINISTRATOR')
+
+    def get_available_devices(self):
+        return [d for d in self.get_devices() if d['username'] == self.administrator_username]
 
     def get_devices(self):
         all_devices = []
@@ -69,4 +73,5 @@ class Client(object):
                 self.stderr.write('An error occurred: %s' % error)
                 break
 
-        return all_devices
+        return [{'model': d['kind'], 'username': d['annotatedUser'], 'serial_number': d[
+                'serialNumber']} for d in all_devices]

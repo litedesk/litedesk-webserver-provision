@@ -20,6 +20,7 @@ from django.core.management.base import BaseCommand
 from provisioning import models
 from optparse import make_option
 from provisioning.google import Client
+import pprint
 
 
 class Command(BaseCommand):
@@ -40,13 +41,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tenant = models.Tenant.objects.get(pk=options['tenant'])
         google_client = Client(tenant)
-        all_devices = google_client.get_devices()
+        all_devices = google_client.get_available_devices()
         self.stdout.write("")
         self.stdout.write("Get Google Devices")
         for device in all_devices:
-            self.stdout.write('%s - %s -> %s' % (device['annotatedUser'],
-                                                 device['serialNumber'],
-                                                 device['lastSync']))
+            #pp = pprint.PrettyPrinter(indent=4)
+            #self.stdout.write(pp.pprint(device))
+            self.stdout.write('%s - %s - %s ' % (device['username'],
+                                                 device['serial_number'],
+                                                 device['model']))
 
         self.stdout.write("")
         self.stdout.write("Get AirWatch Devices & Platform usage")
