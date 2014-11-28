@@ -105,17 +105,7 @@ class Command(BaseCommand):
         self.stdout.write("Get AirWatch Devices & Platform usage")
 
         airwatch_item = models.AirWatch.objects.get(tenant=tenant)
-        airwatch_client = airwatch_item.get_client()
-        endpoint = 'mdm/devices/search'
-
-        # iPad_device = models.Device.objects.get(name='iPad')
-        # iPhone_device = models.Device.objects.get(name='iPhone')
-        # airwatch_item_type = ContentType.objects.get_for_model(airwatch_item)
-        response = airwatch_client.call_api(
-            'GET', endpoint)
-        response.raise_for_status()
-        if response.status_code == 200:
-            devices = response.json().get('Devices')
-            for device in devices:
-                self.stdout.write('%s (%s) user: %s' %
-                                  (device['Model'], device['SerialNumber'], device['UserName']))
+        devices = airwatch_item.get_avilable_devices()
+        for device in devices:
+            self.stdout.write('%s (%s) user: %s' %
+                              (device['Model'], device['SerialNumber'], device['UserName']))

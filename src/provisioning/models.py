@@ -509,6 +509,19 @@ class AirWatch(TenantService, Provisionable):
         except airwatch.user.UserNotEnrolledError:
             pass
 
+    def get_all_devices(self):
+        endpoint = 'mdm/devices/search'
+        response = self.get_client().call_api(
+            'GET', endpoint)
+        response.raise_for_status()
+        if response.status_code == 200:
+            devices = response.json().get('Devices')
+            return devices
+
+    def get_avilable_devices(self):
+        return [d for d in self.get_all_devices()
+                if d['UserName'] == '' or d['UserName'] == 'staging']
+
     @classmethod
     def get_serializer_data(cls, **data):
         return {
