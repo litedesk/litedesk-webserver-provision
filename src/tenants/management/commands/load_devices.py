@@ -105,7 +105,7 @@ class Command(BaseCommand):
         self.stdout.write("Get AirWatch Devices & Platform usage")
 
         airwatch_item = models.AirWatch.objects.get(tenant=tenant)
-        devices = airwatch_item.get_avilable_devices()
+        devices = airwatch_item.get_available_devices()
         for device in devices:
             self.stdout.write('%s (%s) user: %s' %
-                              (device['Model'], device['SerialNumber'], device['UserName']))
+                              (device['model'], device['serial_number'], device['username']))
