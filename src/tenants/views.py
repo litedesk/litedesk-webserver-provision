@@ -5,7 +5,6 @@ import django_filters
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import generics
-
 import models
 import permissions
 import serializers
@@ -47,17 +46,18 @@ class UserListView(generics.ListCreateAPIView):
     def get_serializer_class(self, *args, **kw):
         return {
             'GET': serializers.UserSerializer
-            }.get(self.request.method, serializers.NewUserSerializer)
+        }.get(self.request.method, serializers.NewUserSerializer)
 
     def filter_queryset(self, qs, *args, **kw):
         qs = super(UserListView, self).filter_queryset(qs)
         qs = qs.filter(tenant__primary_contact=self.request.user)
         term = self.request.GET.get('q')
-        if term: qs = qs.filter(
+        if term:
+            qs = qs.filter(
                 Q(first_name__istartswith=term) |
                 Q(last_name__istartswith=term) |
                 Q(username__startswith=term)
-                )
+            )
         return qs
 
 

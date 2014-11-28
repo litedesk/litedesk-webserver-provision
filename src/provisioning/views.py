@@ -19,6 +19,9 @@
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import generics
 from rest_framework import permissions as rest_permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
 
 from tenants import permissions
 from tenants.models import TenantService, User
@@ -43,7 +46,7 @@ class TenantPlatformView(generics.RetrieveUpdateAPIView):
         return {
             'okta': serializers.OktaTenantPlatformSerializer,
             'air-watch': serializers.AirWatchTenantPlatformSerializer
-            }.get(self.object.service, serializers.TenantPlatformSerializer)
+        }.get(self.object.service, serializers.TenantPlatformSerializer)
 
     def get_object(self, *args, **kw):
         return TenantService.objects.get_subclass(pk=self.kwargs.get('pk'))
@@ -68,7 +71,7 @@ class TenantAssetView(generics.RetrieveUpdateAPIView):
         asset_type = ContentType.objects.get_for_model(self.ASSET_CLASS)
         return self.request.user.tenant.tenantitem_set.get(
             content_type=asset_type, object_id=self.kwargs.get('pk')
-            )
+        )
 
 
 class TenantDeviceListView(TenantAssetListView):
@@ -107,3 +110,15 @@ class UserProvisionStatusListView(generics.ListAPIView):
 
     def get_queryset(self, *args, **kw):
         return self.request.user.tenant.user_set.all()
+
+
+class AvailableDeviceListView(APIView):
+    permission_classes = (permissions.IsTenantPrimaryContact, )
+
+    def get(self, request, format=None):
+        """
+        Return a list of all Available Devices.
+        """
+        airwatch_item = models.AirWatch.objects.get(tenant=request.user.tenant)
+        devices = airwatch_item.get_available_devices()
+        return Response(devices)

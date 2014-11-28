@@ -32,4 +32,6 @@ urlpatterns = patterns(
     url(r'^software$', views.TenantSoftwareListView.as_view(), name='software-list'),
     url(r'^software/(?P<pk>\d+)$', views.TenantSoftwareView.as_view(), name='software-detail'),
     url(r'^user/(?P<pk>\d+)$$', views.UserProvisionView.as_view(), name='user-provision'),
-    )
+    url(r'^available_devices$', views.AvailableDeviceListView.as_view(),
+        name='available-device-list'),
+)

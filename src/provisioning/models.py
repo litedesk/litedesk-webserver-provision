@@ -515,12 +515,13 @@ class AirWatch(TenantService, Provisionable):
             'GET', endpoint)
         response.raise_for_status()
         if response.status_code == 200:
-            devices = response.json().get('Devices')
+            devices = [{'model': d['Model'], 'username': d['UserName'], 'serial_number': d[
+                'SerialNumber']} for d in response.json().get('Devices')]
             return devices
 
-    def get_avilable_devices(self):
+    def get_available_devices(self):
         return [d for d in self.get_all_devices()
-                if d['UserName'] == '' or d['UserName'] == 'staging']
+                if d['username'] == '' or d['username'] == 'staging']
 
     @classmethod
     def get_serializer_data(cls, **data):
