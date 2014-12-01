@@ -20,11 +20,13 @@ import datetime
 import logging
 from optparse import make_option
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from dateutil.parser import parse
 
 from accounting.models import Contract, Charge
 from provisioning.models import UserProvisionHistory
+from tenants.models import User
 
 
 log = logging.getLogger(__name__)
@@ -49,30 +51,39 @@ class Command(BaseCommand):
         make_option('-e', '--end', dest='end_date', default=None, help='end date')
     )
 
+    def find_charges(self, item, user, start, end):
+        item_type = ContentType.objects.get_for_model(item)
+        contract = Contract.objects.filter(
+                tenant=user.tenant,
+                offer__item_type=item_type,
+                offer__object_id=item.pk
+                ).valid_between(start, end)
+
+        if contract is None:
+            log.info('No contract found for %s' % user.tenant)
+            return
+
+        offer = contract.offer.__subclassed__
+        charge, created = Charge.objects.get_or_create(
+            start_date=start,
+            end_date=end,
+            user=user,
+            contract=contract,
+            amount=offer.monthly_cost,
+            currency=offer.currency
+        )
+        if created:
+            log.info('%s created' % charge)
+        else:
+            log.info('%s already recorded' % charge)
+
     def handle(self, *fixture_labels, **opts):
         start = beginning_of_period(opts['start_date'] and parse(opts['start_date']).date())
         end = end_of_period(opts['end_date'] and parse(opts['end_date']).date())
 
         for entry in UserProvisionHistory.objects.exclude(end__lt=start):
-            contracts = Contract.available.filter(
-                tenant=entry.user.tenant,
-                offer__item_type=entry.item_type,
-                offer__object_id=entry.object_id
-                )
-            if not contracts.exists():
-                log.info('No contract found for %s' % entry.user.tenant)
-                continue
-            contract = contracts.get()
-            offer = contract.offer.__subclassed__
-            charge, created = Charge.objects.get_or_create(
-                start_date=start,
-                end_date=end,
-                user=entry.user,
-                contract=contract,
-                amount=offer.monthly_cost,
-                currency=offer.currency
-                )
-            if created:
-                log.info('Charge %s created' % charge)
-            else:
-                log.info('Charge %s already recorded' % charge)
+            self.find_charges(entry.item, entry.user, start, end)
+
+        for user in User.objects.all():
+            for service in user.services.select_subclasses():
+                self.find_charges(service, user, start, end)
