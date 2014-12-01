@@ -16,19 +16,12 @@
 # limitations under the License.
 
 
-from django.contrib import admin
+from django.conf.urls import url, patterns
 
-from audit.admin import TrackableModelAdminMixin
-import models
+import views
 
-
-@admin.register(models.Charge)
-class ChargeAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'item', 'amount', 'currency',)
-    search_fields = ('user__username', )
-
-
-@admin.register(models.Contract)
-class ContractAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'offer', 'item', 'start_date', 'end_date')
-    list_filter = ('tenant', )
+urlpatterns = patterns(
+    'accounting.views',
+    url(r'^contracts$', views.ContractCostView.as_view(), name='accounting-contract'),
+    url(r'^user$', views.UserCostView.as_view(), name='accounting-user'),
+    )

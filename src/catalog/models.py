@@ -15,9 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
-
-from dateutil.relativedelta import relativedelta
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -104,12 +101,11 @@ class Subscription(Offer):
     def monthly_cost(self):
         return self.price * {
             SUBSCRIPTION_PERIODS.day: 30,
-            SUBSCRIPTION_PERIODS.week: float(52/12),
+            SUBSCRIPTION_PERIODS.week: float(52 / 12),
             SUBSCRIPTION_PERIODS.month: 1,
-            SUBSCRIPTION_PERIODS.year: float(1/12)
+            SUBSCRIPTION_PERIODS.year: float(1 / 12)
             }[self.period]
 
 
 class Product(Offer):
     pass
-
