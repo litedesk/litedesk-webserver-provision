@@ -24,8 +24,10 @@ import models
 
 @admin.register(models.Charge)
 class ChargeAdmin(TrackableModelAdminMixin, admin.ModelAdmin):
-    list_display = ('user', 'item', 'amount', 'currency',)
+    list_display = ('user', 'item', 'amount', 'currency', 'start_date', 'end_date')
     search_fields = ('user__username', )
+    readonly_fields = ('user', 'contract', 'amount', 'currency', 'start_date', 'end_date')
+    list_filter = ('start_date', 'end_date', 'user__tenant')
 
 
 @admin.register(models.Contract)
