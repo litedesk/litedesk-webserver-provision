@@ -17,26 +17,36 @@
 
 from django.db import models
 from django.core.exceptions import ValidationError
-from jsonfield import JSONField
 from model_utils import Choices
 from model_utils.managers import QueryManager
-from model_utils.models import TimeFramedModel, TimeStampedModel
+from model_utils.models import TimeStampedModel
 
 from catalog.models import Offer, CURRENCIES
 from tenants.models import Tenant, User
 
 
-EXPENSE_CATEGORIES = Choices('platform', 'software', 'devices', 'other')
+EXPENSE_CATEGORIES = ['platform', 'software', 'devices', 'other']
+CATEGORY_CHOICES = Choices(*EXPENSE_CATEGORIES)
 
 
-class Contract(TimeFramedModel):
+class DateFramedModel(models.Model):
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    class Meta:
+        abstract = True
+
+
+class Contract(DateFramedModel):
     objects = models.Manager()
-    available = QueryManager(end__isnull=True)
+    available = QueryManager(end_date__isnull=True)
 
     tenant = models.ForeignKey(Tenant)
     quantity = models.PositiveIntegerField(default=1)
     offer = models.ForeignKey(Offer)
-    extra = JSONField()
+    category = models.CharField(
+        max_length=50, choices=CATEGORY_CHOICES, default=CATEGORY_CHOICES.other
+        )
 
     @property
     def item(self):
@@ -56,14 +66,11 @@ class Contract(TimeFramedModel):
             raise ValidationError(message)
 
 
-class Charge(TimeStampedModel):
+class Charge(TimeStampedModel, DateFramedModel):
     user = models.ForeignKey(User)
-    start_date = models.DateField()
-    end_date = models.DateField()
     contract = models.ForeignKey(Contract)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=50, choices=CURRENCIES)
-    category = models.CharField(max_length=50, choices=EXPENSE_CATEGORIES)
 
     @property
     def item(self):
