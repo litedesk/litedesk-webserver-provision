@@ -18,7 +18,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from model_utils import Choices
-from model_utils.managers import QueryManager
 from model_utils.models import TimeStampedModel
 
 from catalog.models import Offer, CURRENCIES
@@ -33,13 +32,24 @@ class DateFramedModel(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
 
+    def clean(self):
+        if self.start_date > self.end_date:
+            raise ValidationError('start date must be before end date')
+
     class Meta:
         abstract = True
 
 
+class DateFramedQuerySet(models.QuerySet):
+    def valid_between(self, start_date, end_date):
+        try:
+            return self.exclude(start_date__gte=end_date, end_date__lte=start_date).get()
+        except models.DoesNotExist:
+            return None
+
+
 class Contract(DateFramedModel):
-    objects = models.Manager()
-    available = QueryManager(end_date__isnull=True)
+    objects = models.Manager.from_queryset(DateFramedQuerySet)()
 
     tenant = models.ForeignKey(Tenant)
     quantity = models.PositiveIntegerField(default=1)
@@ -53,25 +63,32 @@ class Contract(DateFramedModel):
         return self.offer.item
 
     def validate_unique(self, exclude=None):
-        item_contracts = self.__class__.available.filter(
+
+        item_contract = self.__class__.objects.filter(
                 tenant=self.tenant,
                 offer__item_type=self.offer.item_type,
                 offer__object_id=self.offer.object_id
-                )
-        if self.pk is not None:
-            item_contracts = item_contracts.exclude(id=self.id)
+                ).valid_between(self.start_date, self.end_date)
 
-        if item_contracts.exists():
+        if item_contract is not None and item_contract.pk != self.pk:
             message = 'Active contract exists related to %s for %s' % (self.item, self.tenant)
             raise ValidationError(message)
 
+    def __unicode__(self):
+        return 'Contract for %s on %s' % (self.tenant, self.item)
+
 
 class Charge(TimeStampedModel, DateFramedModel):
-    user = models.ForeignKey(User)
-    contract = models.ForeignKey(Contract)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=50, choices=CURRENCIES)
+    user = models.ForeignKey(User, editable=False)
+    contract = models.ForeignKey(Contract, editable=False)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    currency = models.CharField(max_length=50, choices=CURRENCIES, editable=False)
 
     @property
     def item(self):
         return self.contract.item
+
+    def __unicode__(self):
+        return 'Charge on %s (%s) for %s on %s to %s' % (
+            self.user, self.user.tenant, self.item, self.start_date, self.end_date
+            )

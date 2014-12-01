@@ -62,18 +62,18 @@ class CostView(APIView):
             yield dt, datetime.date(year=dt.year, month=dt.month, day=end_day)
         raise StopIteration
 
-    def _expenses_with_category(self, qs, category):
-        raise NotImplementedError
-
-    def _break_down_by_period(self, qs, start, end):
-        raise NotImplementedError
-
     def _serialize(self, category, qs, start_date, end_date):
         expenses = self._expenses_with_category(qs, category)
         return [{
             'date': '%4d-%02d' % (start.year, start.month),
             'cost': int(self._break_down_by_period(expenses, start, end))
             } for start, end in self._make_periods(start_date, end_date)]
+
+    def _expenses_with_category(self, qs, category):
+        raise NotImplementedError
+
+    def _break_down_by_period(self, qs, start, end):
+        raise NotImplementedError
 
     def get_queryset(self, *args, **kw):
         raise NotImplementedError
@@ -110,4 +110,4 @@ class UserCostView(CostView):
 
     def _break_down_by_period(self, qs, start, end):
         active = qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
-        return sum([it.offer.__subclassed__.monthly_cost for it in active])
+        return sum([it.amount for it in active])

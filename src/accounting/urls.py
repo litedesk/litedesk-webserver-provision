@@ -23,5 +23,5 @@ import views
 urlpatterns = patterns(
     'accounting.views',
     url(r'^contracts$', views.ContractCostView.as_view(), name='accounting-contract'),
-    url(r'^user$', views.UserCostView.as_view(), name='accounting-user'),
+    url(r'^users$', views.UserCostView.as_view(), name='accounting-user')
     )
