@@ -20,7 +20,7 @@ from django.core.management.base import BaseCommand
 from provisioning import models
 from optparse import make_option
 from provisioning.google import Client
-import pprint
+# import pprint
 
 
 class Command(BaseCommand):
