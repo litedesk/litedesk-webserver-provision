@@ -30,7 +30,6 @@ urlpatterns = patterns(
     url(r'^api/session', SessionView.as_view(), name='session'),
 )
 
-
 urlpatterns += patterns(
     'tenants.views',
     url(r'^api/account/(?P<username>[\w.\+\-_]+)$', AccountView.as_view(), name='account'),
@@ -38,18 +37,20 @@ urlpatterns += patterns(
     url(r'^api/tenant/', include('tenants.urls')),
 )
 
-
 urlpatterns += patterns(
     'provisioning.views',
     url(r'^api/provisioning/', include('provisioning.urls')),
 )
 
+urlpatterns += patterns(
+    'accounting.views',
+    url(r'^api/accounting/', include('accounting.urls')),
+)
 
 urlpatterns += patterns(
     'catalog.views',
     url(r'^api/catalog/', include('catalog.urls')),
 )
-
 
 urlpatterns += patterns(
     '',

@@ -23,9 +23,8 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from dateutil.parser import parse
 
-from accounting.models import Contract, Charge, EXPENSE_CATEGORIES
-from provisioning.models import UserProvisionHistory, Software, Device
-from tenants.models import TenantService
+from accounting.models import Contract, Charge
+from provisioning.models import UserProvisionHistory
 
 
 log = logging.getLogger(__name__)
@@ -40,14 +39,6 @@ def end_of_period(date):
     if date is None: date = datetime.date.today()
     last_day_of_month = calendar.monthrange(date.year, date.month)[1]
     return datetime.date(year=date.year, month=date.month, day=last_day_of_month)
-
-
-def get_expense_category(item):
-    return {
-        Software: EXPENSE_CATEGORIES.software,
-        TenantService: EXPENSE_CATEGORIES.platform,
-        Device: EXPENSE_CATEGORIES.devices
-        }.get(type(item), EXPENSE_CATEGORIES.other)
 
 
 class Command(BaseCommand):
@@ -79,8 +70,7 @@ class Command(BaseCommand):
                 user=entry.user,
                 contract=contract,
                 amount=offer.monthly_cost,
-                currency=offer.currency,
-                category=get_expense_category(entry.item)
+                currency=offer.currency
                 )
             if created:
                 log.info('Charge %s created' % charge)
