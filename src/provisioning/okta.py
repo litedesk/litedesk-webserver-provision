@@ -162,7 +162,8 @@ class Client(object):
         return response.json()
 
     def activate_user(self, user, send_email=True):
-        if getattr(user, 'activated', False):
+        status = getattr(user, 'status', None)
+        if status is not None and status not in ('DEPROVISIONED', 'STAGED'):
             raise UserAlreadyActivatedError
 
         params = {
