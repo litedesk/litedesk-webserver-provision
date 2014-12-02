@@ -462,8 +462,6 @@ class AirWatch(TenantService, Provisionable):
             html_msg = render_to_string(
                 'provisioning/mail/html/activation_airwatch.tmpl.html', template_parameters
             )
-            print html_msg
-
             send_mail(
                 title,
                 text_msg,
@@ -472,7 +470,7 @@ class AirWatch(TenantService, Provisionable):
                 html_message=html_msg
             )
         except airwatch.user.UserAlreadyActivatedError:
-            print "AlreadyActivated"
+            pass
 
     def deactivate(self, user):
         log.debug('Deactivating user %s on Airwatch' % user)
