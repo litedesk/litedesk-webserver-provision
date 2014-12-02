@@ -19,5 +19,6 @@ djcelery
 /local
 /log
 /static
+/share
 /tmp
 /venv
