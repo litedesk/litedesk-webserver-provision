@@ -1,5 +1,5 @@
 django
-djangorestframework
+djangorestframework==2.4.4
 django-autoslug
 django-celery
 django-compressor
