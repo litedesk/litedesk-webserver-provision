@@ -214,7 +214,18 @@ class UserProvisionSerializer(serializers.ModelSerializer):
             self._update_provisioned('software', service)
             self._update_provisioned('devices', service)
             self._update_provisioned('simcards', service)
-        obj.services = self.object._provision_data.get('platforms', [])
+
+        current_services = obj.services.all()
+        new_services = self.object._provision_data.get('platforms', [])
+        services_to_add = [s for s in new_services if s not in current_services]
+        services_to_remove = [s for s in current_services if s not in new_services]
+
+        for service in services_to_add:
+            obj.services.add(service)
+
+        for service in services_to_remove:
+            obj.services.remove(service)
+
         obj.save(editor=request.user)
         return obj
 

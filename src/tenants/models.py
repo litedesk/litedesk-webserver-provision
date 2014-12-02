@@ -341,13 +341,31 @@ class User(Trackable, Synchronizable):
 
     @staticmethod
     def on_service_provision(sender, **kw):
-        action = kw.get('action')
         user = kw.get('instance')
-        model = kw.get('model')
+        action = kw.get('action')
+
+        # Only change provision after relation is saved, so we ignore pre_* actions
+        if action not in ['post_clear', 'post_add', 'post_remove']: return
+
+        # If we are clearing the services, just remove from the user
+        if action == 'post_clear':
+            for service in user.services.select_subclasses():
+                service.deactivate(user)
+            return
+
+        # Add/remove actions, we need to take a look at what services changed.
+        service_ids = kw.get('pk_set')
+
+        services = user.tenant.tenantservice_set.filter(id__in=service_ids).select_subclasses()
         if action == 'post_add':
-            services = model.objects.filter(id__in=kw.get('pk_set')).select_subclasses()
             for service in services:
+                log.info('Activating service %s for %s' % (service, user))
                 service.activate(user)
+
+        if action == 'post_remove':
+            for service in services:
+                log.info('Deactivating service %s from %s' % (service, user))
+                service.deactivate(user)
 
     class Meta:
         unique_together = ('tenant', 'username')

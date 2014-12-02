@@ -481,9 +481,12 @@ class AirWatch(TenantService, Provisionable):
         client = self.get_client()
         service_user = airwatch.user.User.get_remote(client, user.username)
         if service_user is not None:
-            service_user.deactivate()
-            for tenantserviceasset in self.tenantserviceasset_set.all():
-                self.unassign(tenantserviceasset.asset, user)
+            try:
+                service_user.deactivate()
+                for tenantserviceasset in self.tenantserviceasset_set.all():
+                    self.unassign(tenantserviceasset.asset, user)
+            except airwatch.user.UserNotActiveError:
+                log.info('Trying to deactivate user %s, which is not active' % service_user)
 
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
