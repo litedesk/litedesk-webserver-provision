@@ -1,7 +1,6 @@
 {% extends "provisioning/mail/html/activation_base.tmpl.html" %}
 
 {% block welcome_message %}
-  <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%; color: rgb(118, 118, 121); ">
     Hi {{ user.first_name }}, <br />
 
     your organization is using AirWatch to manage your mobile
@@ -12,25 +11,26 @@
     If the AirWatch MDM Agent app is installed on your device, you
     will be redirected to it. If not, you will be redirected to your
     device's official app store to download it.
-  </span>
 {% endblock %}
 
 {% block access_information_message %}
-  <div style="text-align: center;">
-    <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
         <strong>YOUR SYSTEM ADMINISTRATOR HAS CREATED AN AIRWATCH ACCOUNT FOR YOU.</strong>
         <br />
         <br />Please use the following credentials to authenticate.<br />
-        <br />
-        YOUR SERVER: <br /><a href="#" style="text-decoration: none; color: rgb(102, 102, 102);">{{ service.server_url }}</a><br />
-        <br />YOUR GROUP ID<br />
-        {{ service.group_id }}<br />
         <br />YOUR USERNAME<br />
         {{ user.username }}<br />
         <br />YOUR PASSWORD<br />
-        Use Okta password<br /><br />
+        Use Okta password<br />
+        <br />YOUR SERVER: <br /><a href="#" style="text-decoration: none; color: rgb(102, 102, 102);">{{ service.server_url }}</a><br />
+        <br />YOUR GROUP ID<br />
+        {{ service.group_id }}<br />
+        <br />
         <br />Alternatively, scan the QR code below to begin enrollment.
         <img src="{{ qr_code }}" alt="{{ qr_code }}"/>
-    </span>
-  </div>
+{% endblock %}
+
+{% block help %}
+If you experience difficulties accessing your account, you can send an email to your system administrator using this link:
+<a href="mailto:philipp.offermann@telekom.de" style="text-decoration: none; color: rgb(101, 164, 234);">philipp.offermann@telekom.de</a>
+<br /><br />
 {% endblock %}

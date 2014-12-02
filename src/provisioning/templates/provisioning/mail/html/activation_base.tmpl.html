@@ -48,22 +48,35 @@
                     </tr>
                     <tr>
                       <td valign="top" bgcolor="#ffffff">
-                        <table cellpadding="30">
-                          <tr><td>
+                         <table cellpadding="30" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
+                                  <tbody>
+                                    <tr valign="top">
+                                      <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121);">
+                                        <span style="font-size: 14px; line-height: 150%;">
+                                          <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
+                                            <span style="color: rgb(118, 118, 121); line-height: 150%;">
                               {% block welcome_message %}
                               {% endblock %}
-                          </td></tr>
-                        </table>
+                          </span>
+                                        </span>
+                                      </span>
+                                      <br>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                         <table cellpadding="13" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; background-color: rgb(255, 255, 255);" bgcolor="#ffffff">
                           <tbody>
                             <tr valign="top">
                               <td valign="top" style="line-height: 150%; color: rgb(118, 118, 121); padding-bottom: 0px;">
-                                <table cellpadding="15" width="100%">
-                                  <tr><td style="padding-bottom: 0px;">
+                              <div style="text-align: center;">
+                                <span style="font-size: 14px; line-height: 150%;">
+                                  <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
                                     {% block access_information_message %}
                                     {% endblock %}
-                                  </td></tr>
-                                </table>
+                                  </span>
+                                  </span>
+                                </div>
                               </td>
                             </tr>
                           </tbody>
@@ -77,7 +90,7 @@
                         <tbody>
                           <tr valign="top">
                             <td valign="top" style="line-height: 150%; color: rgb(255, 255, 255); padding-bottom:0px;">
-                              <div style="color: rgb(102, 102, 102);">
+                              <div style="color: rgb(118, 118, 121);">
                                 <span style="font-size: 14px; line-height: 150%;">
                                   <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 130%;">
                                     {% block additional_information_message %}
@@ -99,12 +112,11 @@
                           <tbody>
                             <tr valign="top">
                               <td valign="top" style="line-height: 130%; color: rgb(255, 255, 255);">
-                                <div style="color: rgb(102, 102, 102);">
+                                <div style="color: rgb(118, 118, 121);">
                                   <span style="font-size: 12px; line-height: 130%;">
                                     <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 130%;">
-                                      If you experience difficulties accessing your account, you can send a help request to your system administrator using this link:
-                                      <a target="_blank" href="{{ service.portal_help_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ service.portal_help_url }}</a>
-                                      <br /><br />
+                                      {% block help %}
+                                      {% endblock %}
                                       This is an automatically generated message by {{ site.name }}. Replies are not monitored or answered.
                                     </span>
                                   </span>

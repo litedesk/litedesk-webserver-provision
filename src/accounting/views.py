@@ -17,6 +17,7 @@
 
 import calendar
 import datetime
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from rest_framework.response import Response
@@ -102,6 +103,13 @@ class ContractCostView(CostView):
 
 class UserCostView(CostView):
 
+    @property
+    def total_users(self):
+        if hasattr(self, '_total_users'): return self._total_users
+
+        self._total_users = self.request.user.tenant.user_set.count()
+        return self._total_users
+
     def get_queryset(self, *args, **kw):
         return models.Charge.objects.filter(user__tenant=self.request.user.tenant)
 
@@ -110,4 +118,4 @@ class UserCostView(CostView):
 
     def _break_down_by_period(self, qs, start, end):
         active = qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
-        return sum([it.amount for it in active])
+        return sum([Decimal(str(it.amount))/self.total_users for it in active])

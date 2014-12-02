@@ -5,7 +5,6 @@
 {% endblock %}
 
 {% block welcome_message %}
-  <span style="font-size: 14px; font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%; color: rgb(118, 118, 121); ">
     Hi {{ user.first_name }}, <br />
 
 
@@ -14,29 +13,23 @@
     To access your device, you need to use your Google account in
     addition to your Okta account. If you did not already have a
     Google account, it has been created for you.
-  </span>
-
 {% endblock %}
 
 {% block access_information_message %}
-
-<div style="text-align: center;">
-    <span style="font-size: 14px; line-height: 150%;">
-      <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
         <strong>YOUR SYSTEM ADMINISTRATOR HAS PROVISIONED YOU A {{ device.name | upper }}.<br>
         </strong>
         <br>YOUR GOOGLE ACCOUNT IS<br><a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a>
-      </span>
-    </span>
-</div>
-
 {% endblock %}
 
 {% block additional_information_message %}
-
-Please follow these steps to add your user to your {{ device.name }} that is managed by <a href="#" style="text-decoration: none; color: rgb(102, 102, 102);">{{ user.tenant.email_domain }}</a>:<br>
+Please follow these steps to add your user to your {{ device.name }} that is managed by <a href="#" style="text-decoration: none; color: rgb(102, 102, 102);">{{ user.tenant.email_domain }}</a>:<br><br>
 1. Sign in with your Google account email, leave the password empty.<br>
 2. Sign in with your Okta user credentials.<br>
 3. Re-enter your Okta password to complete sign-in.
+{% endblock %}
 
+{% block help %}
+If you experience difficulties accessing your account, you can send an email to your system administrator using this link:
+<a href="mailto:philipp.offermann@telekom.de" style="text-decoration: none; color: rgb(101, 164, 234);">philipp.offermann@telekom.de</a>
+<br /><br />
 {% endblock %}
