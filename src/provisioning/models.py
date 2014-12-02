@@ -195,7 +195,8 @@ class Device(Asset):
                 'service': service,
                 'site': settings.SITE,
                 'device': device,
-                'title': '%s - Welcome to Google' % settings.SITE.get('name')
+                'title': '%s - Welcome to Google' % settings.SITE.get('name'),
+                'include_additional_information_message': 'true'
             }
         return None
 
@@ -399,10 +400,6 @@ class AirWatch(TenantService, Provisionable):
         return url
 
     @property
-    def portal_help_url(self):
-        return '%s/AirWatch/HelpSystem/en/Default.htm' % self.portal_url
-
-    @property
     def api_server_domain(self):
         portal_domain = urlparse(self.server_url).netloc
         components = portal_domain.split('.')
@@ -465,6 +462,7 @@ class AirWatch(TenantService, Provisionable):
             html_msg = render_to_string(
                 'provisioning/mail/html/activation_airwatch.tmpl.html', template_parameters
             )
+            print html_msg
 
             send_mail(
                 title,
@@ -474,7 +472,7 @@ class AirWatch(TenantService, Provisionable):
                 html_message=html_msg
             )
         except airwatch.user.UserAlreadyActivatedError:
-            pass
+            print "AlreadyActivated"
 
     def deactivate(self, user):
         log.debug('Deactivating user %s on Airwatch' % user)
