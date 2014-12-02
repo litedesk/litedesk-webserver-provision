@@ -88,6 +88,10 @@ class Charge(TimeStampedModel, DateFramedModel):
     def item(self):
         return self.contract.item
 
+    @property
+    def category(self):
+        return self.contract.category
+
     def __unicode__(self):
         return 'Charge on %s (%s) for %s on %s to %s' % (
             self.user, self.user.tenant, self.item, self.start_date, self.end_date
