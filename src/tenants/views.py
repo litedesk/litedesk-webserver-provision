@@ -19,6 +19,9 @@ import django_filters
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import generics
+from rest_framework import status
+from rest_framework.response import Response
+
 import models
 import permissions
 import serializers
@@ -79,6 +82,10 @@ class UserView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAdminOrTenantPrimaryContact, )
     serializer_class = serializers.UserSerializer
     model = models.User
+
+    def delete(self, request, *args, **kw):
+        self.get_object().delete(editor=self.request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserGroupListView(generics.ListCreateAPIView):
