@@ -284,6 +284,7 @@ class InventoryEntrySerializer(serializers.ModelSerializer):
 
     tenant_asset = serializers.PrimaryKeyRelatedField()
     user = serializers.PrimaryKeyRelatedField()
+    device_id = serializers.RelatedField(source='tenant_asset.asset.id', read_only=True)
 
     def validate_user(self, attrs, source):
         request = self.context.get('request')
@@ -301,4 +302,4 @@ class InventoryEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.InventoryEntry
-        fields = ('id', 'user', 'tenant_asset', 'serial_number', 'status')
+        fields = ('id', 'user', 'tenant_asset', 'serial_number', 'status', 'device_id')
