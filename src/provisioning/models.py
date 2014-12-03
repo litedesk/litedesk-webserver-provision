@@ -19,6 +19,8 @@ import os
 import logging
 import datetime
 from urlparse import urlparse
+import threading
+import time
 
 from autoslug import AutoSlugField
 from django.conf import settings
@@ -239,25 +241,6 @@ class Device(Asset):
         pass
 
 
-class SKU(models.Model):
-    device = models.ForeignKey(Device)
-    tenant = models.ForeignKey(Tenant)
-    identifier = models.CharField(max_length=100, null=True, blank=True)
-
-    def __unicode__(self):
-        return '%s (%s)' % (self.device.name, self.identifier)
-
-
-class InventoryEntry(Trackable, StatusModel):
-    STATUS = Choices('handed_out', 'returned')
-    sku = models.ForeignKey(SKU)
-    user = models.ForeignKey(User)
-
-    def save(self, *args, **kwargs):
-        super(InventoryEntry, self).save(
-            editor=self.user.tenant.primary_contact, *args, **kwargs)
-
-
 class MobileDataPlan(Asset):
     pass
 
@@ -277,6 +260,26 @@ class TenantAsset(PropertyTable):
 
     class Meta:
         unique_together = ('tenant', 'asset')
+
+
+class InventoryEntry(Trackable, StatusModel):
+    STATUS = Choices('handed_out', 'returned')
+    user = models.ForeignKey(User)
+    tenant_asset = models.ForeignKey(TenantAsset)
+    serial_number = models.CharField(max_length=100, null=False, default='N/A')
+
+    @property
+    def tenant(self):
+        return self.user.tenant
+
+    def save(self, *args, **kwargs):
+        super(InventoryEntry, self).save(
+            editor=self.user.tenant.primary_contact, *args, **kwargs)
+        # TODO : if the inventory item is a google device make a call to the google api to
+        # save the username in the annotated user field
+
+    def __unicode__(self):
+        return '%s (%s)' % (self.user.username, self.serial_number)
 
 
 class Okta(TenantService, Provisionable):
@@ -321,16 +324,24 @@ class Okta(TenantService, Provisionable):
         except okta.ResourceDoesNotExistError:
             service_user = self.register(user)
 
+        status_before = getattr(service_user, 'status', 'STAGED')
+
         try:
             activation_response = client.activate_user(service_user, send_email=False)
+        except okta.UserAlreadyActivatedError:
+            pass
+        else:
             password = user.get_remote().set_one_time_password()
             template_parameters = {
                 'user': user,
                 'service': self,
-                'activation_url': activation_response.get('activationUrl'),
                 'site': settings.SITE,
                 'password': password
             }
+            if status_before == 'STAGED':
+                template_parameters['activation_url'] == \
+                    activation_response.get('activationUrl')
+
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
             )
@@ -345,8 +356,6 @@ class Okta(TenantService, Provisionable):
                 [user.email],
                 html_message=html_msg
             )
-        except okta.UserAlreadyActivatedError:
-            pass
 
     def assign(self, asset, user):
         log.debug('Assigning %s to %s on Okta' % (asset, user))
@@ -486,6 +495,13 @@ class AirWatch(TenantService, Provisionable):
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
+        log.warn(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
+        thread = threading.Thread(target=self._workaround_smartgroup_bug)
+        thread.daemon = True
+        thread.start()
 
     def unassign(self, software, user):
         if self.type not in software.supported_platforms:
@@ -498,6 +514,34 @@ class AirWatch(TenantService, Provisionable):
             service_user.remove_from_group(metadata.get('group_id'))
         except airwatch.user.UserNotEnrolledError:
             pass
+        log.warn(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
+        thread = threading.Thread(target=self._workaround_smartgroup_bug)
+        thread.daemon = True
+        thread.start()
+
+    def _workaround_smartgroup_bug(self):
+        client = self.get_client()
+        time.sleep(10)
+        for smart_group in airwatch.group.SmartGroup.search(client):
+            if smart_group.Name == 'Staging User':
+                continue
+            time.sleep(1)
+            try:
+                smart_group.update()
+                log.debug('{0}, {1} AirWatch SmartGroup update done'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
+            except:
+                log.warn(
+                    '{0}, {1} AirWatch SmartGroup update failed'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
+
 
     def get_all_devices(self):
         endpoint = 'mdm/devices/search'

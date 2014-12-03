@@ -31,7 +31,11 @@ urlpatterns = patterns(
     url(r'^platform/(?P<pk>\d+)$', views.TenantPlatformView.as_view(), name='platform-detail'),
     url(r'^software$', views.TenantSoftwareListView.as_view(), name='software-list'),
     url(r'^software/(?P<pk>\d+)$', views.TenantSoftwareView.as_view(), name='software-detail'),
-    url(r'^user/(?P<pk>\d+)$$', views.UserProvisionView.as_view(), name='user-provision'),
+    url(r'^user/(?P<pk>\d+)$', views.UserProvisionView.as_view(), name='user-provision'),
+    url(r'^user/(?P<pk>\d+)/inventory_entries$',
+        views.UserInventoryEntryListView.as_view(), name='user-inventory-entries'),
     url(r'^available_devices$', views.AvailableDeviceListView.as_view(),
         name='available-device-list'),
+    url(r'^inventory_entries$', views.InventoryEntryListView.as_view(),
+        name='inventory-entries-list'),
 )

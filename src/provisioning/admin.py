@@ -78,14 +78,8 @@ class LastSeenEvent(admin.ModelAdmin):
     search_fields = ('user__username', )
 
 
-@admin.register(models.SKU)
-class SKU(admin.ModelAdmin):
-    list_display = ('device', 'identifier')
-    # search_fields = ('sku__identifier')
-
-
 @admin.register(models.InventoryEntry)
 class InventoryEntry(admin.ModelAdmin):
-    list_display = ('sku', 'user', 'status')
-    search_fields = ('sku__device__name',)
+    list_display = ('serial_number', 'user', 'status')
+    search_fields = ('tenant_asset__asset__name',)
     list_filter = ('status', )

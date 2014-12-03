@@ -55,7 +55,8 @@ class UserModelChoiceField(serializers.PrimaryKeyRelatedField):
             raise ValidationError(msg)
 
     def _get_choices(self):
-        if not self.parent: return []
+        if not self.parent:
+            return []
         request = self.parent.context.get('request')
         return [(x.id, unicode(x)) for x in self.get_choices_queryset(request.user)]
 
@@ -69,6 +70,7 @@ class UserModelChoiceField(serializers.PrimaryKeyRelatedField):
 
 
 class UserPlatformChoiceField(UserModelChoiceField):
+
     def initialize(self, parent, field_name):
         super(UserModelChoiceField, self).initialize(parent, field_name)
         self.queryset = self.get_choices_queryset(self.parent.object)
@@ -83,6 +85,7 @@ class UserPlatformChoiceField(UserModelChoiceField):
 
 
 class UserAssetChoiceField(UserModelChoiceField):
+
     def __init__(self, *args, **kw):
         self.asset_class = kw.pop('asset', models.Asset)
         super(UserModelChoiceField, self).__init__(*args, **kw)
@@ -98,7 +101,7 @@ class UserAssetChoiceField(UserModelChoiceField):
         return [
             self.to_native(it.pk)
             for it in obj.get_provisioned_items(item_class=self.asset_class)
-            ]
+        ]
 
     def field_from_native(self, data, files, field_name, reverted_data):
         ids = self._get_field_list(data, field_name)
@@ -151,18 +154,21 @@ class TenantPlatformSerializer(serializers.ModelSerializer):
 
 
 class OktaTenantPlatformSerializer(TenantPlatformSerializer):
+
     class Meta:
         model = models.Okta
         fields = BASE_PLATFORM_FIELDS + ['domain']
 
 
 class AirWatchTenantPlatformSerializer(TenantPlatformSerializer):
+
     class Meta:
         model = models.AirWatch
         fields = BASE_PLATFORM_FIELDS + ['username', 'password', 'server_url', 'group_id']
 
 
 class TenantAssetSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = models.Asset
         fields = ('id', 'name', 'description')
@@ -245,25 +251,25 @@ class UserSummarySerializer(serializers.ModelSerializer):
         return {
             'id': asset.id,
             'name': asset.name
-            }
+        }
 
     def get_user_devices(self, obj):
         return [
             self._serialize_asset(it)
             for it in obj.get_provisioned_items(item_class=models.Device)
-            ]
+        ]
 
     def get_user_software(self, obj):
         return [
             self._serialize_asset(it)
             for it in obj.get_provisioned_items(item_class=models.Software)
-            ]
+        ]
 
     def get_user_mobile_data_plans(self, obj):
         return [
             self._serialize_asset(it)
             for it in obj.get_provisioned_items(item_class=models.MobileDataPlan)
-            ]
+        ]
 
     def get_user_platforms(self, obj):
         provisioned = set([svc.type for svc in obj.services.all()])
@@ -272,3 +278,27 @@ class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ('mobile_data_plans', 'last_modified', 'tenant', 'services')
+
+
+class InventoryEntrySerializer(serializers.ModelSerializer):
+
+    tenant_asset = serializers.PrimaryKeyRelatedField()
+    user = serializers.PrimaryKeyRelatedField()
+
+    def validate_user(self, attrs, source):
+        request = self.context.get('request')
+        value = attrs[source]
+        if value.tenant != request.user.tenant:
+            raise serializers.ValidationError("the user is not a member of the tenant")
+        return attrs
+
+    def validate_tenant_asset(self, attrs, source):
+        request = self.context.get('request')
+        value = attrs[source]
+        if value.tenant != request.user.tenant:
+            raise serializers.ValidationError("the tenant asset does not belong to the tenant")
+        return attrs
+
+    class Meta:
+        model = models.InventoryEntry
+        fields = ('id', 'user', 'tenant_asset', 'serial_number', 'status')
