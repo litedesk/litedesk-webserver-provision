@@ -501,6 +501,10 @@ class AirWatch(TenantService, Provisionable):
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
+        log.debug(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
         thread = threading.Thread(target=self._workaround_smartgroup_bug)
         thread.daemon = True
         thread.start()
@@ -516,6 +520,10 @@ class AirWatch(TenantService, Provisionable):
             service_user.remove_from_group(metadata.get('group_id'))
         except airwatch.user.UserNotEnrolledError:
             pass
+        log.debug(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
         thread = threading.Thread(target=self._workaround_smartgroup_bug)
         thread.daemon = True
         thread.start()
@@ -526,7 +534,15 @@ class AirWatch(TenantService, Provisionable):
             try:
                 smart_group.update()
             except:
-                log.debug('{0}, {1} AirWatch SmartGroup update failed'.format(smart_group.Name, smart_group.SmartGroupID))
+                log.debug(
+                    '{0}, {1} AirWatch SmartGroup update failed'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
+                log.debug(
+                    'It is perfectly okay for special SmartGroup like '
+                    '"Staging User" to fail :)'
+                )
 
 
     def get_all_devices(self):
