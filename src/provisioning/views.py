@@ -29,6 +29,7 @@ from google import Client
 import models
 import serializers
 from models import TenantAsset
+from models import InventoryEntry
 
 
 class TenantPlatformListView(generics.ListCreateAPIView):
@@ -137,3 +138,12 @@ class AvailableDeviceListView(APIView):
                     d['device_id'] = ta.asset_id
 
         return Response(devices)
+
+
+class InventoryEntryListView(generics.ListCreateAPIView):
+    permission_classes = (permissions.IsTenantPrimaryContact, )
+    serializer_class = serializers.InventoryEntrySerializer
+    model = InventoryEntry
+
+    def filter_queryset(self, qs, *args, **kwargs):
+        return qs.filter(tenant_asset__tenant=self.request.user.tenant)

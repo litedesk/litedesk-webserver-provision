@@ -266,6 +266,10 @@ class InventoryEntry(Trackable, StatusModel):
     tenant_asset = models.ForeignKey(TenantAsset)
     serial_number = models.CharField(max_length=100, null=False, default='N/A')
 
+    @property
+    def tenant(self):
+        return self.user.tenant
+
     def save(self, *args, **kwargs):
         super(InventoryEntry, self).save(
             editor=self.user.tenant.primary_contact, *args, **kwargs)
