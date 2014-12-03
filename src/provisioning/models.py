@@ -19,6 +19,7 @@ import os
 import logging
 import datetime
 from urlparse import urlparse
+import threading
 
 from autoslug import AutoSlugField
 from django.conf import settings
@@ -496,6 +497,9 @@ class AirWatch(TenantService, Provisionable):
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
+        thread = threading.Thread(target=self._workaround_smartgroup_bug)
+        thread.daemon = True
+        thread.start()
 
     def unassign(self, software, user):
         if self.type not in software.supported_platforms:
@@ -508,6 +512,18 @@ class AirWatch(TenantService, Provisionable):
             service_user.remove_from_group(metadata.get('group_id'))
         except airwatch.user.UserNotEnrolledError:
             pass
+        thread = threading.Thread(target=self._workaround_smartgroup_bug)
+        thread.daemon = True
+        thread.start()
+
+    def _workaround_smartgroup_bug(self):
+        client = self.get_client()
+        for smart_group in airwatch.group.SmartGroup.search(client):
+            try:
+                smart_group.update()
+            except:
+                log.debug('{0}, {1} AirWatch SmartGroup update failed'.format(smart_group.Name, smart_group.SmartGroupID))
+
 
     def get_all_devices(self):
         endpoint = 'mdm/devices/search'
