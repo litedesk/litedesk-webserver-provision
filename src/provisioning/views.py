@@ -147,3 +147,13 @@ class InventoryEntryListView(generics.ListCreateAPIView):
 
     def filter_queryset(self, qs, *args, **kwargs):
         return qs.filter(tenant_asset__tenant=self.request.user.tenant)
+
+
+class UserInventoryEntryListView(generics.ListAPIView):
+    permission_classes = (permissions.IsTenantPrimaryContact, )
+    serializer_class = serializers.InventoryEntrySerializer
+    model = InventoryEntry
+
+    def filter_queryset(self, qs, *args, **kwargs):
+        return qs.filter(tenant_asset__tenant=self.request.user.tenant,
+                         user__id=self.kwargs.get('pk'))
