@@ -34,4 +34,6 @@ urlpatterns = patterns(
     url(r'^user/(?P<pk>\d+)$$', views.UserProvisionView.as_view(), name='user-provision'),
     url(r'^available_devices$', views.AvailableDeviceListView.as_view(),
         name='available-device-list'),
+    url(r'^inventory_entries$', views.InventoryEntryListView.as_view(),
+        name='inventory-entries-list'),
 )
