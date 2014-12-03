@@ -273,6 +273,8 @@ class InventoryEntry(Trackable, StatusModel):
     def save(self, *args, **kwargs):
         super(InventoryEntry, self).save(
             editor=self.user.tenant.primary_contact, *args, **kwargs)
+        # TODO : if the inventory item is a google device make a call to the google api to
+        # save the username in the annotated user field
 
     def __unicode__(self):
         return '%s (%s)' % (self.user.username, self.serial_number)
