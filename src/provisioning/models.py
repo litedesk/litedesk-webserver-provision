@@ -20,6 +20,7 @@ import logging
 import datetime
 from urlparse import urlparse
 import threading
+import time
 
 from autoslug import AutoSlugField
 from django.conf import settings
@@ -533,6 +534,9 @@ class AirWatch(TenantService, Provisionable):
     def _workaround_smartgroup_bug(self):
         client = self.get_client()
         for smart_group in airwatch.group.SmartGroup.search(client):
+            if smart_group.Name == 'Staging User':
+                continue
+            time.sleep(1)
             try:
                 smart_group.update()
             except:
@@ -540,10 +544,6 @@ class AirWatch(TenantService, Provisionable):
                     '{0}, {1} AirWatch SmartGroup update failed'.format(
                         smart_group.Name, smart_group.SmartGroupID
                     )
-                )
-                log.debug(
-                    'It is perfectly okay for special SmartGroup like '
-                    '"Staging User" to fail :)'
                 )
 
 
