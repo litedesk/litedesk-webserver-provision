@@ -504,7 +504,7 @@ class AirWatch(TenantService, Provisionable):
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
-        log.debug(
+        log.warn(
             'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
             ' as soon as AirWatch fixes the bug'
         )
@@ -523,7 +523,7 @@ class AirWatch(TenantService, Provisionable):
             service_user.remove_from_group(metadata.get('group_id'))
         except airwatch.user.UserNotEnrolledError:
             pass
-        log.debug(
+        log.warn(
             'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
             ' as soon as AirWatch fixes the bug'
         )
@@ -539,8 +539,12 @@ class AirWatch(TenantService, Provisionable):
             time.sleep(1)
             try:
                 smart_group.update()
+                log.debug('{0}, {1} AirWatch SmartGroup update done'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
             except:
-                log.debug(
+                log.warn(
                     '{0}, {1} AirWatch SmartGroup update failed'.format(
                         smart_group.Name, smart_group.SmartGroupID
                     )
