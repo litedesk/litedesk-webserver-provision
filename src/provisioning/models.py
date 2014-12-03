@@ -282,6 +282,9 @@ class TenantAsset(PropertyTable):
 class Okta(TenantService, Provisionable):
     PLATFORM_TYPE = TenantService.PLATFORM_TYPE_CHOICES.web
     ACTIVE_DIRECTORY_CONTROLLER = True
+
+    DEACTIVATION_EXCEPTION = okta.UserNotActiveError
+
     domain = models.CharField(max_length=200)
 
     @property
@@ -345,10 +348,6 @@ class Okta(TenantService, Provisionable):
         except okta.UserAlreadyActivatedError:
             pass
 
-    def deactivate(self, user):
-        log.warn('Trying to deactivate user %s on Okta, which should never happen' % user)
-        return
-
     def assign(self, asset, user):
         log.debug('Assigning %s to %s on Okta' % (asset, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
@@ -368,6 +367,8 @@ class Okta(TenantService, Provisionable):
         service_application = client.get(okta.Application, metadata.get('application_id'))
         try:
             service_application.unassign(service_user)
+        except okta.UserApplicationNotFound, e:
+            log.info('Failed to unassign %s from %s: %s' % (asset, user, e))
         except Exception, why:
             log.warn('Error when unassigning %s to %s: %s' % (asset, user, why))
 
@@ -386,6 +387,8 @@ class AirWatch(TenantService, Provisionable):
     QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
     QRCODE_ROOT_URL = settings.SITE.get('host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
     QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
+
+    DEACTIVATION_EXCEPTION = airwatch.user.UserNotActiveError
 
     username = models.CharField(max_length=80)
     password = models.CharField(max_length=1000)
@@ -471,18 +474,6 @@ class AirWatch(TenantService, Provisionable):
             )
         except airwatch.user.UserAlreadyActivatedError:
             pass
-
-    def deactivate(self, user):
-        log.debug('Deactivating user %s on Airwatch' % user)
-        client = self.get_client()
-        service_user = airwatch.user.User.get_remote(client, user.username)
-        if service_user is not None:
-            try:
-                service_user.deactivate()
-                for tenantserviceasset in self.tenantserviceasset_set.all():
-                    self.unassign(tenantserviceasset.asset, user)
-            except airwatch.user.UserNotActiveError:
-                log.info('Trying to deactivate user %s, which is not active' % service_user)
 
     def assign(self, software, user):
         if self.type not in software.supported_platforms:

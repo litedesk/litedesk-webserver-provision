@@ -174,9 +174,7 @@ class UserProvisionSerializer(serializers.ModelSerializer):
     devices = UserAssetChoiceField(asset=models.Device)
     simcards = UserAssetChoiceField(asset=models.MobileDataPlan)
 
-    def _update_provisioned(self, field_name, service):
-        request = self.context.get('request')
-        editor = request.user
+    def _update_provisioned(self, field_name, service, editor):
         provision_data = getattr(self.object, '_provision_data', {})
 
         if field_name not in provision_data:
@@ -210,10 +208,12 @@ class UserProvisionSerializer(serializers.ModelSerializer):
 
     def save_object(self, obj, **kw):
         request = self.context.get('request')
+        editor = request.user
+
         for service in obj.tenant.tenantservice_set.select_subclasses():
-            self._update_provisioned('software', service)
-            self._update_provisioned('devices', service)
-            self._update_provisioned('simcards', service)
+            self._update_provisioned('software', service, editor)
+            self._update_provisioned('devices', service, editor)
+            self._update_provisioned('simcards', service, editor)
 
         current_services = obj.services.all()
         new_services = self.object._provision_data.get('platforms', [])
@@ -221,12 +221,12 @@ class UserProvisionSerializer(serializers.ModelSerializer):
         services_to_remove = [s for s in current_services if s not in new_services]
 
         for service in services_to_add:
-            obj.services.add(service)
+            service.activate(obj, editor=editor)
 
         for service in services_to_remove:
-            obj.services.remove(service)
+            service.deactivate(obj, editor=editor)
 
-        obj.save(editor=request.user)
+        obj.save(editor=editor)
         return obj
 
     class Meta:

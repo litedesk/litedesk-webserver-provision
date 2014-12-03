@@ -25,7 +25,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from model_utils.models import TimeStampedModel
 from picklefield.fields import PickledObjectField
 
-from signals import trackable_model_changed
+from signals import trackable_model_changed, pre_trackable_model_delete
 
 
 class UntrackableChangeError(Exception):
@@ -95,6 +95,13 @@ class Trackable(TimeStampedModel):
             instance=self,
             original=original
         )
+
+    def delete(self, editor=None, *args, **kw):
+        if editor is None:
+            raise UntrackableChangeError('No account defined as author of update')
+
+        pre_trackable_model_delete.send(sender=self.__class__, editor=editor, instance=self)
+        return super(Trackable, self).delete(*args, **kw)
 
     class Meta:
         abstract = True

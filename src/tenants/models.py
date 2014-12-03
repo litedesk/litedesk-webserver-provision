@@ -35,6 +35,7 @@ from model_utils.managers import InheritanceManager, QueryManager
 from litedesk.lib.active_directory.session import Session
 from litedesk.lib.active_directory.classes.base import Company, User as ActiveDirectoryUser
 from audit.models import Trackable, UntrackableChangeError
+from audit.signals import pre_trackable_model_delete
 from syncremote.models import Synchronizable
 
 import tasks
@@ -147,6 +148,8 @@ class TenantService(models.Model):
     PLATFORM_TYPES = [p[0] for p in PLATFORM_TYPE_CHOICES]
     ACTIVE_DIRECTORY_CONTROLLER = False
 
+    DEACTIVATION_EXCEPTION = Exception
+
     objects = InheritanceManager()
     active = QueryManager(is_active=True)
     tenant = models.ForeignKey(Tenant)
@@ -176,8 +179,22 @@ class TenantService(models.Model):
     def register(self, user):
         raise NotImplementedError
 
-    def activate(self, user):
-        pass
+    def activate(self, user, editor=None):
+        user.services.add(self)
+
+    def deactivate(self, user, editor=None):
+        log.debug('Deactivating user %s on %s' % (user, self))
+        service_user = self.get_service_user(user)
+        for up in user.userprovisionable_set.filter(service=self):
+            up.item.deprovision(self, user, editor=editor)
+
+        if service_user is not None:
+            try:
+                service_user.deactivate()
+            except self.__class__.DEACTIVATION_EXCEPTION:
+                log.info('Trying to deactivate user %s, which is not active' % user)
+
+        user.services.remove(self)
 
     def get_service_user(self, user):
         raise NotImplementedError
@@ -340,32 +357,10 @@ class User(Trackable, Synchronizable):
         return datetime.datetime.strptime(remote_object.when_changed, '%Y%m%d%H%M%S.%fZ')
 
     @staticmethod
-    def on_service_provision(sender, **kw):
+    def on_removal(sender, **kw):
         user = kw.get('instance')
-        action = kw.get('action')
-
-        # Only change provision after relation is saved, so we ignore pre_* actions
-        if action not in ['post_clear', 'post_add', 'post_remove']: return
-
-        # If we are clearing the services, just remove from the user
-        if action == 'post_clear':
-            for service in user.services.select_subclasses():
-                service.deactivate(user)
-            return
-
-        # Add/remove actions, we need to take a look at what services changed.
-        service_ids = kw.get('pk_set')
-
-        services = user.tenant.tenantservice_set.filter(id__in=service_ids).select_subclasses()
-        if action == 'post_add':
-            for service in services:
-                log.info('Activating service %s for %s' % (service, user))
-                service.activate(user)
-
-        if action == 'post_remove':
-            for service in services:
-                log.info('Deactivating service %s from %s' % (service, user))
-                service.deactivate(user)
+        for service in user.services.select_subclasses():
+            service.deactivate(user, editor=kw.get('editor'))
 
     class Meta:
         unique_together = ('tenant', 'username')
@@ -385,4 +380,4 @@ class UserGroup(models.Model):
 
 # Signals
 post_save.connect(TenantService.on_user_creation, dispatch_uid='user_add', sender=User)
-m2m_changed.connect(User.on_service_provision, sender=User.services.through)
+pre_trackable_model_delete.connect(User.on_removal, dispatch_uid='user_delete', sender=User)

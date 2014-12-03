@@ -49,6 +49,6 @@ class Command(BaseCommand):
 
         for service in user.services.select_subclasses():
             try:
-                service.deactivate(user)
+                service.deactivate(user, editor=editor)
             except Exception, why:
                 log.warn('Error when deactivating %s: %s' % (service, why))
