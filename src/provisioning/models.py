@@ -317,16 +317,24 @@ class Okta(TenantService, Provisionable):
         except okta.ResourceDoesNotExistError:
             service_user = self.register(user)
 
+        status_before = getattr(service_user, 'status', 'STAGED')
+
         try:
             activation_response = client.activate_user(service_user, send_email=False)
+        except okta.UserAlreadyActivatedError:
+            pass
+        else:
             password = user.get_remote().set_one_time_password()
             template_parameters = {
                 'user': user,
                 'service': self,
-                'activation_url': activation_response.get('activationUrl'),
                 'site': settings.SITE,
                 'password': password
             }
+            if status_before == 'STAGED':
+                template_parameters['activation_url'] == \
+                    activation_response.get('activationUrl')
+
             text_msg = render_to_string(
                 'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
             )
@@ -341,8 +349,6 @@ class Okta(TenantService, Provisionable):
                 [user.email],
                 html_message=html_msg
             )
-        except okta.UserAlreadyActivatedError:
-            pass
 
     def deactivate(self, user):
         log.warn('Trying to deactivate user %s on Okta, which should never happen' % user)

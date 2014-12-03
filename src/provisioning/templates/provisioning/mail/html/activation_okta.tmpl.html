@@ -78,17 +78,18 @@
   <div style="text-align: center;">
     <span style="font-size: 14px; line-height: 150%;">
       <span style="font-family: 'trebuchet ms', helvetica, sans-serif; line-height: 150%;">
-        <strong>YOUR SYSTEM ADMINISTRATOR HAS CREATED AN OKTA USER ACCOUNT FOR YOU.<br>
-      </strong>
-      <br>Click the following link to activate your Okta account.<br>This link expires in 7 days.<br>
-      <br>
-        <a target="_blank" href="{{ activation_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ activation_url }}</a>
-        <br>
+          <strong>YOUR SYSTEM ADMINISTRATOR HAS CREATED AN OKTA USER ACCOUNT FOR YOU.<br></strong>
+        {% if activationUrl %}
+          <br>Click the following link to activate your Okta account.<br>This link expires in 7 days.<br>
+          <br>
+          <a target="_blank" href="{{ activation_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ activation_url }}</a>
+        {% endif %}
+          <br>
           <br>YOUR USERNAME IS<br><a href="mailto:{{ user.tenant_email }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ user.tenant_email }}</a><br>
           <br>YOUR ONE-TIME WINDOWS PASSWORD IS<br>{{ password }}<br>
-              <br>YOUR ORGANIZATION’S SIGN-IN PAGE IS<br>
-              <a target="_blank" href="{{ service.portal_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ service.portal_url }}</a>
-            </span>
+          <br>YOUR ORGANIZATION’S SIGN-IN PAGE IS<br>
+          <a target="_blank" href="{{ service.portal_url }}" style="text-decoration: none; color: rgb(101, 164, 234);">{{ service.portal_url }}</a>
+        </span>
           </span>
         </div>
         <div>
