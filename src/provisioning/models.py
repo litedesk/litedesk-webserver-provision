@@ -239,25 +239,6 @@ class Device(Asset):
         pass
 
 
-class SKU(models.Model):
-    device = models.ForeignKey(Device)
-    tenant = models.ForeignKey(Tenant)
-    identifier = models.CharField(max_length=100, null=True, blank=True)
-
-    def __unicode__(self):
-        return '%s (%s)' % (self.device.name, self.identifier)
-
-
-class InventoryEntry(Trackable, StatusModel):
-    STATUS = Choices('handed_out', 'returned')
-    sku = models.ForeignKey(SKU)
-    user = models.ForeignKey(User)
-
-    def save(self, *args, **kwargs):
-        super(InventoryEntry, self).save(
-            editor=self.user.tenant.primary_contact, *args, **kwargs)
-
-
 class MobileDataPlan(Asset):
     pass
 
@@ -277,6 +258,20 @@ class TenantAsset(PropertyTable):
 
     class Meta:
         unique_together = ('tenant', 'asset')
+
+
+class InventoryEntry(Trackable, StatusModel):
+    STATUS = Choices('handed_out', 'returned')
+    user = models.ForeignKey(User)
+    tenant_asset = models.ForeignKey(TenantAsset)
+    serial_number = models.CharField(max_length=100, null=False, default='N/A')
+
+    def save(self, *args, **kwargs):
+        super(InventoryEntry, self).save(
+            editor=self.user.tenant.primary_contact, *args, **kwargs)
+
+    def __unicode__(self):
+        return '%s (%s)' % (self.user.username, self.serial_number)
 
 
 class Okta(TenantService, Provisionable):

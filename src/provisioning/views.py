@@ -28,6 +28,7 @@ from tenants.models import TenantService, User
 from google import Client
 import models
 import serializers
+from models import TenantAsset
 
 
 class TenantPlatformListView(generics.ListCreateAPIView):
@@ -119,7 +120,20 @@ class AvailableDeviceListView(APIView):
         """
         Return a list of all Available Devices.
         """
+        tenant = request.user.tenant
+        tenant_assets = TenantAsset.objects.filter(tenant=tenant)
+        tenant_assets = [
+            ta for ta in tenant_assets
+            if ta.asset.__subclassed__.__class__.__name__ == 'Device']
         airwatch_item = models.AirWatch.objects.get(tenant=request.user.tenant)
         google_client = Client(request.user.tenant)
-        devices = airwatch_item.get_available_devices() + google_client.get_available_devices()
+        google_devices = google_client.get_available_devices()
+        airwatch_devices = airwatch_item.get_available_devices()
+        devices = airwatch_devices + google_devices
+        for d in devices:
+            for ta in tenant_assets:
+                if ta.asset.name.lower() in d['model'].lower():
+                    d['tenant_asset_id'] = ta.id
+                    d['device_id'] = ta.asset_id
+
         return Response(devices)
