@@ -533,6 +533,7 @@ class AirWatch(TenantService, Provisionable):
 
     def _workaround_smartgroup_bug(self):
         client = self.get_client()
+        time.sleep(10)
         for smart_group in airwatch.group.SmartGroup.search(client):
             if smart_group.Name == 'Staging User':
                 continue
