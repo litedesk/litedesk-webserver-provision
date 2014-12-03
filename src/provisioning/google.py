@@ -21,7 +21,7 @@ from apiclient.discovery import build
 from oauth2client.client import SignedJwtAssertionCredentials
 import os
 from django.conf import settings
-#import pprint
+import pprint
 
 
 class Client(object):
@@ -74,7 +74,12 @@ class Client(object):
                 self.stderr.write('An error occurred: %s' % error)
                 break
 
-        #pp = pprint.PrettyPrinter(indent=4)
-        #pp.pprint(all_devices)
-        return [{'model': d['notes'], 'username': d['annotatedUser'], 'serial_number': d[
-                'serialNumber']} for d in all_devices]
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(all_devices)
+        return [
+            {
+                'model': d.get('model', d.get('notes', 'UNKNOWN')),
+                'username': d['annotatedUser'],
+                'serial_number': d['serialNumber']
+            } for d in all_devices
+        ]
