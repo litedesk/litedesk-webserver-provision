@@ -20,6 +20,7 @@ import logging
 import datetime
 from urlparse import urlparse
 import threading
+import time
 
 from autoslug import AutoSlugField
 from django.conf import settings
@@ -284,6 +285,9 @@ class InventoryEntry(Trackable, StatusModel):
 class Okta(TenantService, Provisionable):
     PLATFORM_TYPE = TenantService.PLATFORM_TYPE_CHOICES.web
     ACTIVE_DIRECTORY_CONTROLLER = True
+
+    DEACTIVATION_EXCEPTION = okta.UserNotActiveError
+
     domain = models.CharField(max_length=200)
 
     @property
@@ -353,10 +357,6 @@ class Okta(TenantService, Provisionable):
                 html_message=html_msg
             )
 
-    def deactivate(self, user):
-        log.warn('Trying to deactivate user %s on Okta, which should never happen' % user)
-        return
-
     def assign(self, asset, user):
         log.debug('Assigning %s to %s on Okta' % (asset, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
@@ -376,6 +376,8 @@ class Okta(TenantService, Provisionable):
         service_application = client.get(okta.Application, metadata.get('application_id'))
         try:
             service_application.unassign(service_user)
+        except okta.UserApplicationNotFound, e:
+            log.info('Failed to unassign %s from %s: %s' % (asset, user, e))
         except Exception, why:
             log.warn('Error when unassigning %s to %s: %s' % (asset, user, why))
 
@@ -394,6 +396,8 @@ class AirWatch(TenantService, Provisionable):
     QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
     QRCODE_ROOT_URL = settings.SITE.get('host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
     QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
+
+    DEACTIVATION_EXCEPTION = airwatch.user.UserNotActiveError
 
     username = models.CharField(max_length=80)
     password = models.CharField(max_length=1000)
@@ -480,18 +484,6 @@ class AirWatch(TenantService, Provisionable):
         except airwatch.user.UserAlreadyActivatedError:
             pass
 
-    def deactivate(self, user):
-        log.debug('Deactivating user %s on Airwatch' % user)
-        client = self.get_client()
-        service_user = airwatch.user.User.get_remote(client, user.username)
-        if service_user is not None:
-            try:
-                service_user.deactivate()
-                for tenantserviceasset in self.tenantserviceasset_set.all():
-                    self.unassign(tenantserviceasset.asset, user)
-            except airwatch.user.UserNotActiveError:
-                log.info('Trying to deactivate user %s, which is not active' % service_user)
-
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
             return
@@ -503,6 +495,10 @@ class AirWatch(TenantService, Provisionable):
             service_user.add_to_group(metadata.get('group_id'))
         except airwatch.user.UserAlreadyEnrolledError:
             pass
+        log.warn(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
         thread = threading.Thread(target=self._workaround_smartgroup_bug)
         thread.daemon = True
         thread.start()
@@ -518,17 +514,33 @@ class AirWatch(TenantService, Provisionable):
             service_user.remove_from_group(metadata.get('group_id'))
         except airwatch.user.UserNotEnrolledError:
             pass
+        log.warn(
+            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
+            ' as soon as AirWatch fixes the bug'
+        )
         thread = threading.Thread(target=self._workaround_smartgroup_bug)
         thread.daemon = True
         thread.start()
 
     def _workaround_smartgroup_bug(self):
         client = self.get_client()
+        time.sleep(10)
         for smart_group in airwatch.group.SmartGroup.search(client):
+            if smart_group.Name == 'Staging User':
+                continue
+            time.sleep(1)
             try:
                 smart_group.update()
+                log.debug('{0}, {1} AirWatch SmartGroup update done'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
             except:
-                log.debug('{0}, {1} AirWatch SmartGroup update failed'.format(smart_group.Name, smart_group.SmartGroupID))
+                log.warn(
+                    '{0}, {1} AirWatch SmartGroup update failed'.format(
+                        smart_group.Name, smart_group.SmartGroupID
+                    )
+                )
 
 
     def get_all_devices(self):

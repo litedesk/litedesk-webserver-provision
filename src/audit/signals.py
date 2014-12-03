@@ -22,3 +22,5 @@ from django.dispatch import Signal
 trackable_model_changed = Signal(
     providing_args=['editor', 'created', 'instance', 'original']
     )
+
+pre_trackable_model_delete = Signal(providing_args=['editor', 'instance'])
