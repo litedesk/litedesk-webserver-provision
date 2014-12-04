@@ -38,9 +38,8 @@ class Command(BaseCommand):
         result = {'okta': {}, 'airwatch': {}}
         okta_service = Okta.objects.all().get()
         client = okta.Client(okta_service.domain, okta_service.api_token)
-        search_result = client.search(okta.User, options["username"].split('.')[0])
-        if search_result:
-            okta_user = search_result[0]
+        okta_user = client.get(okta.User, options["username"])
+        if okta_user:
             # self.stdout.write("got the Okta user with the id")
             result['okta']['id'] = okta_user.id
             result['okta']['status'] = okta_user.status

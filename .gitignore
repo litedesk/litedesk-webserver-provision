@@ -9,6 +9,8 @@ deployment_settings.py
 deployment.wsgi
 
 djcelery
+cross7-data
+env
 .idea
 /etc/*.conf
 /etc/*.ini

@@ -30,15 +30,16 @@ log = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Unassigns all assets from a user.'
     option_list = BaseCommand.option_list + (
-        make_option('--username', dest='user', help='Username of target user'),
+        make_option('--username', dest='username', action="store", type="string", help='Username of target user'),
         )
 
     def handle(self, *args, **options):
-        username = options.get('user')
+        username = options['username']
 
         if not username:
             sys.exit('Username not provided')
 
+        
         user = User.objects.get(username=username)
         editor = DjangoUser.objects.filter(is_superuser=True)[0]
 
