@@ -52,3 +52,4 @@ class Command(BaseCommand):
                 service.deactivate(user)
             except Exception, why:
                 log.warn('Error when deactivating %s: %s' % (service, why))
+        user.services.clear()
