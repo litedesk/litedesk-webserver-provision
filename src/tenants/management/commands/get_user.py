@@ -56,7 +56,11 @@ class Command(BaseCommand):
             result['airwatch']['applications'] = []
             aw_assets = airwatch_service.airwatch.tenantserviceasset_set.all()
             for asset in aw_assets:
-                group_id = asset.metadata['group_id']
-                if options["username"] in group.UserGroup.usernames_by_group_id(airwatch_client, group_id):
+                smartgroup_id = asset.metadata['smartgroup_id']
+                if options["username"] in (
+                    user['Name'] for user in group.SmartGroup.get_remote(
+                        airwatch_client, smartgroup_id
+                    ).UserAdditions
+                ):
                     result['airwatch']['applications'].append(asset.asset.name)
         self.stdout.write(json.dumps(result))
