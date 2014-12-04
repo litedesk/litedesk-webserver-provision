@@ -14,11 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import re
 import json
+
 import requests
 
-
+# FIXME: The check_for_error, check_is_known_error response should be
+# refactored to use the check_exception_response decorator.
 ERROR_RESPONSES = {
     'ALREADY_ACTIVATED': {
         'summary': 'Activation failed because the user is already active',
@@ -30,6 +32,22 @@ ERROR_RESPONSES = {
         'code': 'E0000001'
         }
     }
+
+
+def check_exception_response(exception_class):
+    def decorator(func):
+        def proxy(self, *args, **kw):
+            try:
+                result = func(self, *args, **kw)
+            except requests.HTTPError, http_error:
+                error_response = http_error.response
+                if exception_class.checking_function(error_response):
+                    raise exception_class(exception_class.get_error_message(error_response))
+                else:
+                    raise http_error
+            return result
+        return proxy
+    return decorator
 
 
 def check_for_error(response, key, exception):
@@ -57,16 +75,50 @@ def check_is_known_error_response(response, key):
         return False
 
 
-class ResourceDoesNotExistError(Exception):
+class OktaException(Exception):
+    PATTERN = None
+    ERROR_CODE = None
+    ERROR_MESSAGE_TEMPLATE = None
+
+    @classmethod
+    def get_error_message(cls, error_response):
+        response_data = error_response.json()
+        summary = response_data.get('errorSummary')
+        match = re.match(cls.PATTERN, summary)
+        groups = match and match.groups()
+        return cls.ERROR_MESSAGE_TEMPLATE % (groups[0])
+
+    @classmethod
+    def checking_function(cls, response):
+        response_data = response.json()
+        return all([
+            response_data.get('errorCode') == cls.ERROR_CODE,
+            re.match(cls.PATTERN, response_data.get('errorSummary', '')) is not None
+            ])
+
+
+class ResourceDoesNotExistError(OktaException):
     pass
 
 
-class UserAlreadyExistsError(Exception):
+class UserAlreadyExistsError(OktaException):
     pass
 
 
-class UserAlreadyActivatedError(Exception):
+class UserAlreadyActivatedError(OktaException):
     pass
+
+
+class UserNotActiveError(OktaException):
+    PATTERN = r'Not found: Resource not found: (.*) \(User\)'
+    ERROR_CODE = 'E0000007'
+    ERROR_MESSAGE_TEMPLATE = 'User %s not found, or not active'
+
+
+class UserApplicationNotFound(OktaException):
+    PATTERN = r'Not found: Resource not found: (.*) \(AppUser\)'
+    ERROR_CODE = 'E0000007'
+    ERROR_MESSAGE_TEMPLATE = 'User Application %s not assigned'
 
 
 class Resource(object):
@@ -78,6 +130,12 @@ class Resource(object):
 
 class User(Resource):
     ENDPOINT_ROOT = 'users'
+
+    @check_exception_response(UserNotActiveError)
+    def deactivate(self):
+        url = 'users/%s/lifecycle/deactivate' % self.id
+        response = self._client._make_request(url, method='POST')
+        response.raise_for_status()
 
 
 class Application(Resource):
@@ -93,6 +151,7 @@ class Application(Resource):
         response = self._client._make_request(url, method='POST', data=payload)
         response.raise_for_status()
 
+    @check_exception_response(UserApplicationNotFound)
     def unassign(self, user):
         url = '%s/%s/users/%s' % (Application.ENDPOINT_ROOT, self.id, user.id)
         response = self._client._make_request(url, method='DELETE')

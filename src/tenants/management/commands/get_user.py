@@ -38,14 +38,16 @@ class Command(BaseCommand):
         result = {'okta': {}, 'airwatch': {}}
         okta_service = Okta.objects.all().get()
         client = okta.Client(okta_service.domain, okta_service.api_token)
-        okta_user = client.search(okta.User, options["username"].split('.')[0])[0]
-         # self.stdout.write("got the Okta user with the id")
-        result['okta']['id'] = okta_user.id
-        result['okta']['status'] = okta_user.status
-        result['okta']['applications'] = []
-        okta_apps = client.user_applications(okta_user)
-        for app in okta_apps:
-            result['okta']['applications'].append(app['name'])
+        search_result = client.search(okta.User, options["username"].split('.')[0])
+        if search_result:
+            okta_user = search_result[0]
+            # self.stdout.write("got the Okta user with the id")
+            result['okta']['id'] = okta_user.id
+            result['okta']['status'] = okta_user.status
+            result['okta']['applications'] = []
+            okta_apps = client.user_applications(okta_user)
+            for app in okta_apps:
+                result['okta']['applications'].append(app['name'])
         airwatch_service = AirWatch.objects.all().get()
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
