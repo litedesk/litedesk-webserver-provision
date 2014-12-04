@@ -227,10 +227,10 @@ class UserProvisionSerializer(serializers.ModelSerializer):
         services_to_remove = [s for s in current_services if s not in new_services]
 
         for service in services_to_add:
-            service.activate(obj, editor=editor)
+            service.__subclassed__.activate(obj, editor=editor)
 
         for service in services_to_remove:
-            service.deactivate(obj, editor=editor)
+            service.__subclassed__.deactivate(obj, editor=editor)
 
         obj.save(editor=editor)
         return obj

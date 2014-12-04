@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,6 @@ log = logging.getLogger(__name__)
 
 
 class Provisionable(object):
-
     def activate(self, user, **kw):
         raise NotImplementedError
 
@@ -70,7 +69,8 @@ class UserProvisionable(TimeStampedModel):
         return self.user.tenant
 
     def __unicode__(self):
-        return '%s provision for user %s on %s' % (self.item, self.user, self.service)
+        return '%s provision for user %s on %s' % (
+            self.item, self.user, self.service)
 
     class Meta:
         unique_together = ('user', 'service', 'item_type', 'object_id')
@@ -170,7 +170,6 @@ class Asset(TimeStampedModel, Provisionable):
 
 
 class Software(Asset):
-
     def provision(self, service, user, editor=None):
         service.assign(self, user)
         super(Software, self).provision(service, user, editor=editor)
@@ -246,7 +245,6 @@ class MobileDataPlan(Asset):
 
 
 class ChromeDevice(Device):
-
     def can_be_managed_by(self, service):
         return service.type == TenantService.PLATFORM_TYPE_CHOICES.web
 
@@ -317,7 +315,7 @@ class Okta(TenantService, Provisionable):
             pass
         return self.get_service_user(user)
 
-    def activate(self, user, *args, **kw):
+    def activate(self, user, editor=None):
         client = self.get_client()
         try:
             service_user = self.get_service_user(user)
@@ -325,46 +323,54 @@ class Okta(TenantService, Provisionable):
             service_user = self.register(user)
 
         status_before = getattr(service_user, 'status', 'STAGED')
+        activation_url = None
 
         try:
-            activation_response = client.activate_user(service_user, send_email=False)
+            activation_response = client.activate_user(service_user,
+                                                       send_email=False)
         except okta.UserAlreadyActivatedError:
             pass
         else:
-            password = user.get_remote().set_one_time_password()
-            template_parameters = {
-                'user': user,
-                'service': self,
-                'site': settings.SITE,
-                'password': password
-            }
             if status_before == 'STAGED':
-                template_parameters['activation_url'] == \
-                    activation_response.get('activationUrl')
+                activation_url = activation_response.get('activationUrl')
 
-            text_msg = render_to_string(
-                'provisioning/mail/text/activation_okta.tmpl.txt', template_parameters
-            )
-            html_msg = render_to_string(
-                'provisioning/mail/html/activation_okta.tmpl.html', template_parameters
-            )
+        password = user.get_remote().set_one_time_password()
+        template_parameters = {
+            'user': user,
+            'service': self,
+            'site': settings.SITE,
+            'activation_url': activation_url,
+            'password': password
+        }
 
-            send_mail(
-                '%s - Welcome to %s' % (settings.SITE.get('name'), self.name),
-                text_msg,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                html_message=html_msg
-            )
+        text_msg = render_to_string(
+            'provisioning/mail/text/activation_okta.tmpl.txt',
+            template_parameters
+        )
+        html_msg = render_to_string(
+            'provisioning/mail/html/activation_okta.tmpl.html',
+            template_parameters
+        )
+
+        send_mail(
+            '%s - Welcome to %s' % (settings.SITE.get('name'), self.name),
+            text_msg,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_msg
+        )
+        super(Okta, self).activate(user, editor)
 
     def assign(self, asset, user):
         log.debug('Assigning %s to %s on Okta' % (asset, user))
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         client = self.get_client()
         service_user = self.get_service_user(user)
-        service_application = client.get(okta.Application, metadata.get('application_id'))
+        service_application = client.get(okta.Application,
+                                         metadata.get('application_id'))
         try:
-            service_application.assign(service_user, profile=metadata.get('profile'))
+            service_application.assign(service_user,
+                                       profile=metadata.get('profile'))
         except Exception, why:
             log.warn('Error when assigning %s to %s: %s' % (asset, user, why))
 
@@ -373,7 +379,8 @@ class Okta(TenantService, Provisionable):
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=asset)
         client = self.get_client()
         service_user = self.get_service_user(user)
-        service_application = client.get(okta.Application, metadata.get('application_id'))
+        service_application = client.get(okta.Application,
+                                         metadata.get('application_id'))
         try:
             service_application.unassign(service_user)
         except okta.UserApplicationNotFound, e:
@@ -394,7 +401,8 @@ class Okta(TenantService, Provisionable):
 class AirWatch(TenantService, Provisionable):
     PLATFORM_TYPE = 'mobile'
     QRCODE_ROOT_DIR = os.path.join(settings.MEDIA_ROOT, 'airwatch_qrcodes')
-    QRCODE_ROOT_URL = settings.SITE.get('host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
+    QRCODE_ROOT_URL = settings.SITE.get(
+        'host_url') + settings.MEDIA_URL + 'airwatch_qrcodes/'
     QRCODE_TEMPLATE = 'https://awagent.com?serverurl={0}&gid={1}'
 
     DEACTIVATION_EXCEPTION = airwatch.user.UserNotActiveError
@@ -454,7 +462,7 @@ class AirWatch(TenantService, Provisionable):
         image_url = self.QRCODE_ROOT_URL + server_domain + '/' + image_file_name
         return image_url
 
-    def activate(self, user):
+    def activate(self, user, editor=None):
         service_user = self.get_service_user(user)
         if service_user is None:
             service_user = self.register(user)
@@ -469,10 +477,12 @@ class AirWatch(TenantService, Provisionable):
                 'qr_code': self.qrcode
             }
             text_msg = render_to_string(
-                'provisioning/mail/text/activation_airwatch.tmpl.txt', template_parameters
+                'provisioning/mail/text/activation_airwatch.tmpl.txt',
+                template_parameters
             )
             html_msg = render_to_string(
-                'provisioning/mail/html/activation_airwatch.tmpl.html', template_parameters
+                'provisioning/mail/html/activation_airwatch.tmpl.html',
+                template_parameters
             )
             send_mail(
                 title,
@@ -483,6 +493,12 @@ class AirWatch(TenantService, Provisionable):
             )
         except airwatch.user.UserAlreadyActivatedError:
             pass
+        else:
+            super(AirWatch, self).activate(user, editor)
+
+    def deactivate(self, user, editor=None):
+        super(AirWatch, self).deactivate(user, editor)
+        self.get_service_user(user).delete()
 
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
@@ -532,8 +548,8 @@ class AirWatch(TenantService, Provisionable):
             try:
                 smart_group.update()
                 log.debug('{0}, {1} AirWatch SmartGroup update done'.format(
-                        smart_group.Name, smart_group.SmartGroupID
-                    )
+                    smart_group.Name, smart_group.SmartGroupID
+                )
                 )
             except:
                 log.warn(
@@ -549,8 +565,10 @@ class AirWatch(TenantService, Provisionable):
             'GET', endpoint)
         response.raise_for_status()
         if response.status_code == 200:
-            devices = [{'model': d['Model'], 'username': d['UserName'], 'serial_number': d[
-                'SerialNumber']} for d in response.json().get('Devices')]
+            devices = [{'model': d['Model'], 'username': d['UserName'],
+                        'serial_number': d[
+                            'SerialNumber']} for d in
+                       response.json().get('Devices')]
             return devices
 
     def get_available_devices(self):
@@ -601,17 +619,18 @@ class LastSeenEvent(TimeStampedModel):
     last_seen = models.DateTimeField()
 
 
-item_provisioned.connect(UserProvisionHistory.on_provision, dispatch_uid='provision')
-item_deprovisioned.connect(UserProvisionHistory.on_deprovision, dispatch_uid='deprovision')
-
+item_provisioned.connect(UserProvisionHistory.on_provision,
+                         dispatch_uid='provision')
+item_deprovisioned.connect(UserProvisionHistory.on_deprovision,
+                           dispatch_uid='deprovision')
 
 if not getattr(settings, 'PROVISIONABLE_SERVICES'):
     settings.PROVISIONABLE_SERVICES = [
         '.'.join([__name__, k.__name__]) for k in [Okta, AirWatch, MobileIron]
     ]
 
-
 if not getattr(settings, 'ASSET_CLASSES', []):
     settings.ASSET_CLASSES = [
-        '.'.join([__name__, k.__name__]) for k in [Software, Device, MobileDataPlan]
+        '.'.join([__name__, k.__name__]) for k in
+        [Software, Device, MobileDataPlan]
     ]
