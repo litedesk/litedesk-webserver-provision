@@ -19,8 +19,6 @@ import os
 import logging
 import datetime
 from urlparse import urlparse
-import threading
-import time
 
 from autoslug import AutoSlugField
 from django.conf import settings
@@ -439,6 +437,10 @@ class AirWatch(TenantService, Provisionable):
             service_user = airwatch.user.User.create(client, user.username)
         return service_user
 
+    def get_smartgroup(self, smartgroup_id):
+        client = self.get_client()
+        return airwatch.group.SmartGroup.get_remote(client, smartgroup_id)
+
     def register(self, user):
         client = self.get_client()
         try:
@@ -500,64 +502,33 @@ class AirWatch(TenantService, Provisionable):
         super(AirWatch, self).deactivate(user, editor)
         self.get_service_user(user).delete()
 
+    def __smartgroup_and_aw_user(self, software, user):
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
+        smartgroup = self.get_smartgroup(metadata.get('smartgroup_id'))
+        service_user = self.get_service_user(user)
+        return smartgroup, service_user
+
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
             return
 
         log.debug('Assigning %s to %s on Airwatch' % (software, user))
-        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
-        service_user = self.get_service_user(user)
+        smartgroup, aw_user = self.__smartgroup_and_aw_user(software, user)
         try:
-            service_user.add_to_group(metadata.get('group_id'))
+            smartgroup.add_member(aw_user)
         except airwatch.user.UserAlreadyEnrolledError:
             pass
-        log.warn(
-            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
-            ' as soon as AirWatch fixes the bug'
-        )
-        thread = threading.Thread(target=self._workaround_smartgroup_bug)
-        thread.daemon = True
-        thread.start()
 
     def unassign(self, software, user):
         if self.type not in software.supported_platforms:
             return
 
         log.debug('Removing %s from %s on Airwatch' % (software, user))
-        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
-        service_user = self.get_service_user(user)
+        smartgroup, aw_user = self.__smartgroup_and_aw_user(software, user)
         try:
-            service_user.remove_from_group(metadata.get('group_id'))
+            smartgroup.remove_member(aw_user)
         except airwatch.user.UserNotEnrolledError:
             pass
-        log.warn(
-            'Remove provisioning.modelsAirWatch._workaround_smartgroup_bug(self)'
-            ' as soon as AirWatch fixes the bug'
-        )
-        thread = threading.Thread(target=self._workaround_smartgroup_bug)
-        thread.daemon = True
-        thread.start()
-
-    def _workaround_smartgroup_bug(self):
-        client = self.get_client()
-        time.sleep(10)
-        for smart_group in airwatch.group.SmartGroup.search(client):
-            if smart_group.Name == 'Staging User':
-                continue
-            time.sleep(1)
-            try:
-                smart_group.update()
-                log.debug('{0}, {1} AirWatch SmartGroup update done'.format(
-                    smart_group.Name, smart_group.SmartGroupID
-                )
-                )
-            except:
-                log.warn(
-                    '{0}, {1} AirWatch SmartGroup update failed'.format(
-                        smart_group.Name, smart_group.SmartGroupID
-                    )
-                )
-
 
     def get_all_devices(self):
         endpoint = 'mdm/devices/search'
