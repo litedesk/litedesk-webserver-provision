@@ -30,8 +30,11 @@ log = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Unassigns all assets from a user.'
     option_list = BaseCommand.option_list + (
-        make_option('--username', dest='username', action="store", type="string", help='Username of target user'),
-        )
+        make_option('--username', dest='username', action="store",
+                    type="string", help='Username of target user'),
+        make_option('--delete', dest='delete', action="store_true",
+                    default=False, help='Delete user from database'),
+    )
 
     def handle(self, *args, **options):
         username = options['username']
@@ -39,18 +42,23 @@ class Command(BaseCommand):
         if not username:
             sys.exit('Username not provided')
 
-        
-        user = User.objects.get(username=username)
-        editor = DjangoUser.objects.filter(is_superuser=True)[0]
+        try:
+            user = User.objects.get(username=username)
+            editor = DjangoUser.objects.filter(is_superuser=True)[0]
 
-        for up in list(user.userprovisionable_set.all()):
-            service = up.service.__subclassed__
-            log.info('Deprovisioning %s on %s' % (up.item, service))
-            up.item.deprovision(service, user, editor=editor)
+            for up in list(user.userprovisionable_set.all()):
+                service = up.service.__subclassed__
+                log.info('Deprovisioning %s on %s' % (up.item, service))
+                up.item.deprovision(service, user, editor=editor)
 
-        for service in user.services.select_subclasses():
-            try:
-                service.deactivate(user, editor=editor)
-            except Exception, why:
-                log.warn('Error when deactivating %s: %s' % (service, why))
-        user.services.clear()
+            for service in user.services.select_subclasses():
+                try:
+                    service.deactivate(user, editor=editor)
+                except Exception, why:
+                    log.warn('Error when deactivating %s: %s' % (service, why))
+            user.services.clear()
+            if options['delete']:
+                user.delete(editor=editor)
+                sys.stdout.write('Deleted: ' + username)
+        except User.DoesNotExist:
+            self.stdout.write('User not in database.')
