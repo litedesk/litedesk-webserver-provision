@@ -262,4 +262,5 @@ class Client(object):
         params = {'filter': 'user.id eq "%s"' % (user.id)}
         response = self._make_request('apps', method='GET', params=params)
         response.raise_for_status()
+        #print response.headers
         return response.json()

@@ -38,4 +38,6 @@ urlpatterns = patterns(
         name='available-device-list'),
     url(r'^inventory_entries$', views.InventoryEntryListView.as_view(),
         name='inventory-entries-list'),
+    url(r'^user/(?P<pk>\d+)/inventory_entries/latest$',
+        views.LatestUserInventoryEntryListView.as_view(), name='latest-user-inventory-entries'),
 )
