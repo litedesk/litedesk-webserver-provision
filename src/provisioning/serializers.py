@@ -180,9 +180,12 @@ class UserProvisionSerializer(serializers.ModelSerializer):
     devices = UserAssetChoiceField(asset=models.Device)
     simcards = UserAssetChoiceField(asset=models.MobileDataPlan)
 
+    def _get_selected_platforms(self):
+        return [s.__subclassed__ for s in self.object._provision_data.get('platforms', [])]
+
     def _update_provisioned(self, field_name, service, editor):
         provision_data = getattr(self.object, '_provision_data', {})
-        services = getattr(self.object, 'platforms', [])
+        services = self._get_selected_platforms()
 
         if field_name not in provision_data:
             return
@@ -223,16 +226,16 @@ class UserProvisionSerializer(serializers.ModelSerializer):
             self._update_provisioned('devices', service, editor)
             self._update_provisioned('simcards', service, editor)
 
-        current_services = obj.services.all()
-        new_services = self.object._provision_data.get('platforms', [])
+        current_services = obj.services.select_subclasses()
+        new_services = self._get_selected_platforms()
         services_to_add = [s for s in new_services if s not in current_services]
         services_to_remove = [s for s in current_services if s not in new_services]
 
         for service in services_to_add:
-            service.__subclassed__.activate(obj, editor=editor)
+            service.activate(obj, editor=editor)
 
         for service in services_to_remove:
-            service.__subclassed__.deactivate(obj, editor=editor)
+            service.deactivate(obj, editor=editor)
 
         obj.save(editor=editor)
         return obj
