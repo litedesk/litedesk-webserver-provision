@@ -36,9 +36,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         result = {'okta': {}, 'airwatch': {}}
-        okta_service = Okta.objects.all().get()
-        client = okta.Client(okta_service.domain, okta_service.api_token)
-        okta_user = client.get(okta.User, options["username"])
+        okta_service = Okta.objects.get(tenant=1)
+        client = okta_service.get_client()
+        okta_user = client.get(okta.User, options["username"] + '@zeile12.de')
         if okta_user:
             # self.stdout.write("got the Okta user with the id")
             result['okta']['id'] = okta_user.id
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             okta_apps = client.user_applications(okta_user)
             for app in okta_apps:
                 result['okta']['applications'].append(app['name'])
-        airwatch_service = AirWatch.objects.all().get()
+        airwatch_service = AirWatch.objects.get(tenant=1)
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
         if airwatch_user != None:
