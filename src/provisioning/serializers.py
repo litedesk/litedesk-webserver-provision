@@ -182,6 +182,7 @@ class UserProvisionSerializer(serializers.ModelSerializer):
 
     def _update_provisioned(self, field_name, service, editor):
         provision_data = getattr(self.object, '_provision_data', {})
+        services = getattr(self.object, 'platforms', [])
 
         if field_name not in provision_data:
             return
@@ -192,10 +193,11 @@ class UserProvisionSerializer(serializers.ModelSerializer):
 
         to_add = [
             item for item in [it.__subclassed__ for it in selected if it not in current]
-            if item.can_be_managed_by(service)
+            if item.can_be_managed_by(service) and service in services
         ]
-        to_remove = [
-            item for item in [it.__subclassed__ for it in current if it not in selected]
+
+        to_remove = current if service not in services else [item for item in [
+            it.__subclassed__ for it in current if it not in selected]
             if item.can_be_managed_by(service)
         ]
 
