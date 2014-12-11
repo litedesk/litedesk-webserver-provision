@@ -20,9 +20,9 @@ import datetime
 import logging
 from optparse import make_option
 
-from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 
 from accounting.models import Contract, Charge
 from provisioning.models import UserProvisionHistory
@@ -52,30 +52,34 @@ class Command(BaseCommand):
     )
 
     def find_charges(self, item, user, start, end):
-        item_type = ContentType.objects.get_for_model(item)
-        contract = Contract.objects.filter(
-                tenant=user.tenant,
-                offer__item_type=item_type,
-                offer__object_id=item.pk
-                ).valid_between(start, end)
+        current = start
+        while current < end:
+            begin_date = beginning_of_period(current)
+            end_date = end_of_period(current)
+            contract = Contract.objects.valid_offer_for_item(
+                user.tenant, item, begin_date, end_date
+                )
 
-        if contract is None:
-            log.info('No contract found for %s' % user.tenant)
-            return
+            if contract is None:
+                log.info('No contract found for %s' % user.tenant)
+                return
 
-        offer = contract.offer.__subclassed__
-        charge, created = Charge.objects.get_or_create(
-            start_date=start,
-            end_date=end,
-            user=user,
-            contract=contract,
-            amount=offer.monthly_cost,
-            currency=offer.currency
-        )
-        if created:
-            log.info('%s created' % charge)
-        else:
-            log.info('%s already recorded' % charge)
+            offer = contract.offer.__subclassed__
+            charge, created = Charge.objects.get_or_create(
+                start_date=begin_date,
+                end_date=end_date,
+                user=user,
+                contract=contract,
+                amount=offer.monthly_cost,
+                currency=offer.currency
+                )
+
+            current += relativedelta(months=1)
+
+            if created:
+                log.info('%s created' % charge)
+            else:
+                log.info('%s already recorded' % charge)
 
     def handle(self, *fixture_labels, **opts):
         start = beginning_of_period(opts['start_date'] and parse(opts['start_date']).date())

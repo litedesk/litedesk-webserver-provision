@@ -19,6 +19,7 @@ import calendar
 import datetime
 
 from django.db import models
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from model_utils import Choices
 from model_utils.models import TimeStampedModel
@@ -54,16 +55,20 @@ class DateFramedModel(models.Model):
         abstract = True
 
 
-class DateFramedQuerySet(models.QuerySet):
-    def valid_between(self, start_date, end_date):
+class ContractQuerySet(models.QuerySet):
+    def valid_offer_for_item(self, tenant, item, start_date, end_date):
         try:
-            return self.exclude(start_date__gte=end_date, end_date__lte=start_date).get()
+            return self.filter(
+                tenant=tenant,
+                offer__item_type=ContentType.objects.get_for_model(item),
+                offer__object_id=item.id
+                ).exclude(start_date__gte=end_date, end_date__lte=start_date).get()
         except self.model.DoesNotExist:
             return None
 
 
 class Contract(DateFramedModel):
-    objects = models.Manager.from_queryset(DateFramedQuerySet)()
+    objects = models.Manager.from_queryset(ContractQuerySet)()
 
     tenant = models.ForeignKey(Tenant)
     quantity = models.PositiveIntegerField(default=1)
@@ -81,11 +86,9 @@ class Contract(DateFramedModel):
         return getattr(obj.__class__, 'EXPENSE_CATEGORY', CATEGORY_CHOICES.other)
 
     def validate_unique(self, exclude=None):
-        item_contract = self.__class__.objects.filter(
-                tenant=self.tenant,
-                offer__item_type=self.offer.item_type,
-                offer__object_id=self.offer.object_id
-                ).valid_between(self.start_date, self.end_date)
+        item_contract = self.__class__.objects.valid_offer_for_item(
+            self.tenant, self.item, self.start_date, self.end_date
+            )
 
         if item_contract is not None and item_contract.pk != self.pk:
             message = 'Active contract exists related to %s for %s' % (self.item, self.tenant)

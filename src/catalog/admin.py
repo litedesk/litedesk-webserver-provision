@@ -22,7 +22,7 @@ import models
 
 
 class OfferAdmin(admin.ModelAdmin):
-    list_display = ('item', 'status', 'price', 'setup_price', 'currency')
+    list_display = ('item', 'status', 'item_type', 'price', 'setup_price', 'currency')
     list_filter = ('item_type', 'status', 'currency')
 
 

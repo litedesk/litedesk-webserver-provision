@@ -50,36 +50,36 @@ GOOGLE_PRODUCTS = ['Google', 'Chromebook']
 
 
 def random_event_test(probability):
-    return probability <= (100 * random.random())
+    return probability > (100 * random.random())
+
+
+def log_provision(item, user, provision_date):
+    log.info('Assigning %s to %s on %s' % (item, user, provision_date.strftime('%d.%m.%Y')))
 
 
 def make_offer(asset):
     asset_type = ContentType.objects.get_for_model(asset)
-    try:
-        return Subscription.objects.get_subclass(item_type=asset_type, object_id=asset.id)
-    except:
-        return SubscriptionFactory(item_type=asset_type, object_id=asset.id)
+    offer = Subscription.available.filter(item_type=asset_type, object_id=asset.id).first()
+    return offer or SubscriptionFactory(item_type=asset_type, object_id=asset.id)
 
 
 def make_contract(offer, tenant, start, end):
-    try:
-        return tenant.contract_set.filter(offer=offer).valid_between(start, end)
-    except Contract.DoesNotExist:
+    contract = Contract.objects.valid_offer_for_item(tenant, offer.item, start, end)
+    if contract is None:
         contract = ContractFactory(offer=offer, tenant=tenant, start_date=start, end_date=end)
         contract.save()
         log.info('Created %s' % contract)
-        return contract
+    return contract
 
 
 def make_user(tenant, hiring_date, end_date):
     with mute_signals(trackable_model_changed, post_save):
-        new_user = UserFactory.build(tenant=tenant)
-        try:
-            user = tenant.user_set.get(username=new_user.username)
-        except User.DoesNotExist:
-            models.Model.save(new_user)
-            user = new_user
+        user = UserFactory.build(tenant=tenant)
+        if tenant.user_set.filter(username=user.username).exists():
+            log.info('User %s already exists. Skipping...' % user)
+            return
 
+        models.Model.save(user)
         make_provision_history(user, hiring_date, end_date)
 
 
@@ -94,6 +94,7 @@ def make_provision_asset(user, asset, provision_date):
                 object_id=asset.id,
                 start=provision_date
                 )
+            log_provision(asset, user, provision_date)
             models.Model.save(uph)
 
 
@@ -106,6 +107,7 @@ def make_provision_service(user, service, provision_date):
         object_id=service.id,
         start=provision_date
     )
+    log_provision(service, user, provision_date)
     models.Model.save(uph)
 
 
@@ -140,8 +142,10 @@ def make_provision_history(user, start_date, end_date):
     while current < end_date:
         current += relativedelta(months=1)
         if random_event_test(MONTHLY_FIRING_RATE):
-            log.info('Dismissing %s on %s' % (user, current))
-            UserProvisionHistory.objects.filter(user=user, start=start_date).update(end=current)
+            log.info('Dismissing fake user %s on %s' % (user, current))
+            user.userprovisionhistory_set.exclude(end__isnull=True).filter(
+                start=start_date
+                ).update(end=current)
             break
 
 
@@ -157,6 +161,9 @@ class Command(BaseCommand):
         end_date = Contract.end_of_period(year_from_now)
 
         for tenant in Tenant.objects.all():
+            for service in tenant.tenantservice_set.select_subclasses():
+                make_contract(make_offer(service), tenant, start_date, end_date)
+
             for asset in Asset.objects.filter(tenantasset__tenant=tenant).select_subclasses():
                 log.info('Checking/Creating contracts for %s' % asset)
                 make_contract(make_offer(asset), tenant, start_date, end_date)
