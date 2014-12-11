@@ -67,7 +67,7 @@ class CostView(APIView):
         expenses = self._expenses_with_category(qs, category)
         return [{
             'date': '%4d-%02d' % (start.year, start.month),
-            'cost': int(self._break_down_by_period(expenses, start, end))
+            'cost': round(self._break_down_by_period(expenses, start, end), 2)
             } for start, end in self._make_periods(start_date, end_date)]
 
     def _expenses_with_category(self, qs, category):
