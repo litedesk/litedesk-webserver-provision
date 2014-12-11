@@ -15,28 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from decimal import Decimal
-
 import factory
-from factory import fuzzy
+
+from catalog.factories import OfferFactory
+from tenants.factories import TenantFactory
 
 import models
 
 
-class OfferFactory(factory.DjangoModelFactory):
-    name = factory.Sequence(lambda s: 'Product %s' % s)
-    currency = models.CURRENCIES[0][0]
-    price = fuzzy.FuzzyDecimal(2.99, 19.90)
-    setup_price = Decimal('0.0')
+class ContractFactory(factory.DjangoModelFactory):
+    FACTORY_FOR = models.Contract
 
-    status = models.Offer.STATUS.available
-
-
-class ProductFactory(OfferFactory):
-    FACTORY_FOR = models.Product
-
-
-class SubscriptionFactory(OfferFactory):
-    FACTORY_FOR = models.Subscription
-
-    period = models.SUBSCRIPTION_PERIODS.month
+    tenant = factory.SubFactory(TenantFactory)
+    offer = factory.SubFactory(OfferFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 100)
+        

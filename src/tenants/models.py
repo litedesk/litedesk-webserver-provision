@@ -22,7 +22,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 from django.db import transaction
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -147,6 +147,7 @@ class TenantService(models.Model):
     PLATFORM_TYPE_CHOICES = Choices('mobile', 'web', 'windows')
     PLATFORM_TYPES = [p[0] for p in PLATFORM_TYPE_CHOICES]
     ACTIVE_DIRECTORY_CONTROLLER = False
+    EXPENSE_CATEGORY = 'platform'
 
     DEACTIVATION_EXCEPTION = Exception
 

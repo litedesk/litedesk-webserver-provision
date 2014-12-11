@@ -40,7 +40,7 @@ class CostView(APIView):
             start_year, start_month = (int(d) for d in start.split('-'))
             start_date = datetime.date(year=start_year, month=start_month, day=1)
         else:
-            start_date = today - relativedelta(years=1)
+            start_date = today - relativedelta(months=11)
 
         if end is not None:
             end_year, end_month = (int(d) for d in end.split('-'))
@@ -118,4 +118,4 @@ class UserCostView(CostView):
 
     def _break_down_by_period(self, qs, start, end):
         active = qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
-        return sum([Decimal(str(it.amount))/self.total_users for it in active])
+        return sum([Decimal(str(it.amount)) / self.total_users for it in active])
