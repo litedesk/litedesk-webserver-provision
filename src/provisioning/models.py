@@ -515,6 +515,8 @@ class AirWatch(TenantService, Provisionable):
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
             return
+        metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
+        return
 
         log.debug('Assigning %s to %s on Airwatch' % (software, user))
         smartgroup, aw_user = self.__smartgroup_and_aw_user(software, user)
@@ -524,6 +526,7 @@ class AirWatch(TenantService, Provisionable):
             pass
 
     def unassign(self, software, user):
+        return
         if self.type not in software.supported_platforms:
             return
 
