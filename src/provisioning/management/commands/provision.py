@@ -21,6 +21,7 @@ from django.core.management.base import BaseCommand
 from tenants.models import User, Tenant
 from provisioning.models import Asset
 
+
 class Command(BaseCommand):
     help = 'Provision assets to users'
 

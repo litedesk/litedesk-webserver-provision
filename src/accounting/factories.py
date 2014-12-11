@@ -29,4 +29,3 @@ class ContractFactory(factory.DjangoModelFactory):
     tenant = factory.SubFactory(TenantFactory)
     offer = factory.SubFactory(OfferFactory)
     quantity = factory.fuzzy.FuzzyInteger(1, 100)
-        
