@@ -41,11 +41,12 @@ class Command(BaseCommand):
         softwares = user.get_provisioned_items(service=aw)
         print softwares
         app_ids = [
-            app_id for app_id in
-            soft[0].metadata['app_ids'] for soft in [
-            aw.tenantserviceasset_set.get_or_create(asset=software)
-            for software in softwares
-        ]
+            app_id
+            for ts_asset in (
+                aw.tenantserviceasset_set.get_or_create(asset=software)
+                for software in softwares
+            )
+            for app_id in ts_asset[0].metadata['app_ids']
         ]
         print app_ids
         for device in Device.search(client, user=aw.get_service_user(user).UserName):
