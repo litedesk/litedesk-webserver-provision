@@ -168,6 +168,8 @@ class Asset(TimeStampedModel, Provisionable):
 
 
 class Software(Asset):
+    EXPENSE_CATEGORY = 'software'
+
     def provision(self, service, user, editor=None):
         service.assign(self, user)
         super(Software, self).provision(service, user, editor=editor)
@@ -178,6 +180,8 @@ class Software(Asset):
 
 
 class Device(Asset):
+    EXPENSE_CATEGORY = 'devices'
+
     image = models.ImageField(null=True, blank=True)
 
     @property

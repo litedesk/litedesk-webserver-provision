@@ -15,22 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import factory
 
-from django.contrib import admin
+from catalog.factories import OfferFactory
+from tenants.factories import TenantFactory
 
 import models
 
 
-class OfferAdmin(admin.ModelAdmin):
-    list_display = ('item', 'status', 'item_type', 'price', 'setup_price', 'currency')
-    list_filter = ('item_type', 'status', 'currency')
+class ContractFactory(factory.DjangoModelFactory):
+    FACTORY_FOR = models.Contract
 
-
-@admin.register(models.Subscription)
-class SubscriptionAdmin(OfferAdmin):
-    list_filter = ('item_type', 'status', 'period', 'currency')
-
-
-@admin.register(models.Product)
-class Product(OfferAdmin):
-    pass
+    tenant = factory.SubFactory(TenantFactory)
+    offer = factory.SubFactory(OfferFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 100)

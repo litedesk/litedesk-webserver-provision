@@ -50,7 +50,7 @@ class Command(BaseCommand):
         airwatch_service = AirWatch.objects.get(tenant=1)
         airwatch_client = airwatch_service.get_client()
         airwatch_user = user.User.get_remote(airwatch_client, options["username"])
-        if airwatch_user != None:
+        if airwatch_user is not None:
             result['airwatch']['id'] = airwatch_user.id
             result['airwatch']['Status'] = airwatch_user.Status
             result['airwatch']['applications'] = []
