@@ -20,7 +20,7 @@ import time
 from django.core.management.base import BaseCommand
 
 from tenants.models import User
-from provisioning.models import Airwatch
+from provisioning.models import AirWatch
 from litedesk.lib.airwatch.device import Device
 from litedesk.lib.airwatch.app import App
 
@@ -30,24 +30,36 @@ class Command(BaseCommand):
 
     def handle(self, *fixture_labels, **options):
         while True:
-            aw = Airwatch.objects.first()
+            aw = AirWatch.objects.first()
             client = aw.get_client()
             for user in User.objects.all():
                 self.process_user(aw, client, user)
             time.sleep(5)
 
     def process_user(self, aw, client, user):
+        print user
         softwares = user.get_provisioned_items(service=aw)
+        print softwares
         app_ids = [
-            app_id
+            app_id for app_id in
+            soft[0].metadata['app_ids'] for soft in [
+            aw.tenantserviceasset_set.get_or_create(asset=software)
             for software in softwares
-            for metadata, _ in aw.tenantserviceasset_set.get_or_create(asset=software)
-            for app_id in metadata['app_ids']
         ]
+        ]
+        print app_ids
         for device in Device.search(client, user=aw.get_service_user(user).UserName):
+            print device
             self.process_device(aw, client, device, app_ids)
 
     def process_device(self, aw, client, device, app_ids):
         for app_id in app_ids:
-            app = App.search(client, Id=app_id)[0]
-            app.install(device)
+            try:
+                print app_id
+                app = App.search(client, Id=app_id)[0]
+                print app.ApplicationName
+                app.install(device)
+            except:
+                import sys
+                print sys.exc_info()
+
