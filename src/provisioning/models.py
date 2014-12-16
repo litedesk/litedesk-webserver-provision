@@ -441,6 +441,10 @@ class AirWatch(TenantService, Provisionable):
             service_user = airwatch.user.User.create(client, user.username)
         return service_user
 
+    def get_usergroup(self, group_name):
+        client = self.get_client()
+        return airwatch.group.UserGroup.get_remote(client, group_name)
+
     def get_smartgroup(self, smartgroup_id):
         client = self.get_client()
         return airwatch.group.SmartGroup.get_remote(client, smartgroup_id)
@@ -506,20 +510,20 @@ class AirWatch(TenantService, Provisionable):
         super(AirWatch, self).deactivate(user, editor)
         self.get_service_user(user).delete()
 
-    def __smartgroup_and_aw_user(self, software, user):
+    def __group_and_aw_user(self, software, user):
         metadata, _ = self.tenantserviceasset_set.get_or_create(asset=software)
-        smartgroup = self.get_smartgroup(metadata.get('smartgroup_id'))
+        group = self.get_usergroup(metadata.get('group_name'))
         service_user = self.get_service_user(user)
-        return smartgroup, service_user
+        return group, service_user
 
     def assign(self, software, user):
         if self.type not in software.supported_platforms:
             return
 
         log.debug('Assigning %s to %s on Airwatch' % (software, user))
-        smartgroup, aw_user = self.__smartgroup_and_aw_user(software, user)
+        group, aw_user = self.__group_and_aw_user(software, user)
         try:
-            smartgroup.add_member(aw_user)
+            group.add_member(aw_user)
         except airwatch.user.UserAlreadyEnrolledError:
             pass
 
@@ -528,9 +532,9 @@ class AirWatch(TenantService, Provisionable):
             return
 
         log.debug('Removing %s from %s on Airwatch' % (software, user))
-        smartgroup, aw_user = self.__smartgroup_and_aw_user(software, user)
+        group, aw_user = self.__group_and_aw_user(software, user)
         try:
-            smartgroup.remove_member(aw_user)
+            group.remove_member(aw_user)
         except airwatch.user.UserNotEnrolledError:
             pass
 
