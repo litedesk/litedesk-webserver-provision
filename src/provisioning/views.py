@@ -162,10 +162,22 @@ class UserInventoryEntryListView(generics.ListAPIView):
 class LatestUserInventoryEntryListView(UserInventoryEntryListView):
 
     def filter_queryset(self, qs, *args, **kwargs):
-        sql = "select id,user_id, serial_number, max(created), status from %s " \
-            "where user_id=%s group by user_id, serial_number" % (InventoryEntry._meta.db_table,
-                                                                  self.kwargs.get(
-                                                                      'pk'))
+        sql = """
+            SELECT * FROM {0} as entry
+            JOIN (
+              SELECT max(created) as created, serial_number
+              FROM {0}
+              WHERE user_id = {1}
+              GROUP BY serial_number
+            ) as subq
+            ON (
+              entry.created = subq.created
+              AND entry.serial_number = subq.serial_number
+            )
+        """.format(
+            InventoryEntry._meta.db_table,
+            self.kwargs.get('pk')
+        )
         return InventoryEntry.objects.raw(sql)
         # return qs.filter(tenant_asset__tenant=self.request.user.tenant,
         #                user__id=self.kwargs.get('pk'))
