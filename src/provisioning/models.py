@@ -443,7 +443,7 @@ class AirWatch(TenantService, Provisionable):
 
     def get_usergroup(self, group_name):
         client = self.get_client()
-        return airwatch.group.UserGroup.get_remote(client, group_name)
+        return airwatch.group.UserGroupHacked.get_remote(client, group_name)
 
     def get_smartgroup(self, smartgroup_id):
         client = self.get_client()
