@@ -17,8 +17,8 @@
 
 import calendar
 import datetime
-from decimal import Decimal
 
+from django.db.models import Sum
 from dateutil.relativedelta import relativedelta
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -71,13 +71,19 @@ class CostView(APIView):
             } for start, end in self._make_periods(start_date, end_date)]
 
     def _expenses_with_category(self, qs, category):
-        raise NotImplementedError
+        return qs.filter(contract__category=category)
 
     def _break_down_by_period(self, qs, start, end):
         raise NotImplementedError
 
+    def _charges_in_period(self, qs, start, end):
+        return qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
+
+    def _total_charges(self, qs):
+        return qs.aggregate(total=Sum('amount')).get('total') or 0
+
     def get_queryset(self, *args, **kw):
-        raise NotImplementedError
+        return models.Charge.objects.filter(user__tenant=self.request.user.tenant)
 
     def get(self, request, *args, **kw):
         qs = self.get_queryset()
@@ -88,34 +94,14 @@ class CostView(APIView):
             )
 
 
-class ContractCostView(CostView):
-
-    def get_queryset(self, *args, **kw):
-        return models.Contract.objects.filter(tenant=self.request.user.tenant)
-
-    def _expenses_with_category(self, qs, category):
-        return qs.filter(category=category)
-
+class ChargesCostView(CostView):
     def _break_down_by_period(self, qs, start, end):
-        active = qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
-        return sum([it.offer.__subclassed__.monthly_cost for it in active])
+        return self._total_charges(self._charges_in_period(qs, start, end))
 
 
 class UserCostView(CostView):
-
-    @property
-    def total_users(self):
-        if hasattr(self, '_total_users'): return self._total_users
-
-        self._total_users = self.request.user.tenant.user_set.count()
-        return self._total_users
-
-    def get_queryset(self, *args, **kw):
-        return models.Charge.objects.filter(user__tenant=self.request.user.tenant)
-
-    def _expenses_with_category(self, qs, category):
-        return qs.filter(contract__category=category)
-
     def _break_down_by_period(self, qs, start, end):
-        active = qs.exclude(start_date__gt=end).exclude(end_date__lt=start)
-        return sum([Decimal(str(it.amount)) / self.total_users for it in active])
+        charges = self._charges_in_period(qs, start, end)
+        total_users = charges.values('user').distinct().count()
+        total_cost = self._total_charges(charges)
+        return 0 if not total_users else total_cost / total_users

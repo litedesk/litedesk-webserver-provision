@@ -22,6 +22,6 @@ import views
 
 urlpatterns = patterns(
     'accounting.views',
-    url(r'^contracts$', views.ContractCostView.as_view(), name='accounting-contract'),
-    url(r'^users$', views.UserCostView.as_view(), name='accounting-user')
+    url(r'^costs/charges$', views.ChargesCostView.as_view(), name='accounting-charges'),
+    url(r'^costs/user$', views.UserCostView.as_view(), name='accounting-user')
     )
