@@ -41,10 +41,10 @@ from tenants.models import Tenant
 log = logging.getLogger(__name__)
 
 MOBILE_USAGE_PCT = 45.0
-APPLE_USAGE_PCT = 30.0
-GOOGLE_USAGE_PCT = 30.0
+APPLE_USAGE_PCT = 40.0
+GOOGLE_USAGE_PCT = 60.0
 OFFICE_USAGE_PCT = 80.0
-SALESFORCE_USAGE_PCT = 25.0
+SALESFORCE_USAGE_PCT = 45.0
 MONTHLY_FIRING_RATE = 5.0
 
 GOOGLE_PRODUCTS = ['Google', 'Chromebook', 'Chromebox']
@@ -141,13 +141,12 @@ def make_provision_history(user, start_date, end_date):
         make_provision_service(user, service, start_date)
 
     current = start_date
-    while current < end_date:
+    while current <= end_date and not random_event_test(MONTHLY_FIRING_RATE):
         current += relativedelta(months=1)
-        if random_event_test(MONTHLY_FIRING_RATE):
-            log.info('Dismissing fake user %s on %s' % (user, current))
-            user.userprovisionhistory_set.filter(
-                end__isnull=True, start=start_date).update(end=current)
-            break
+        current = min(current, end_date)
+
+    log.info('Dismissing fake user %s on %s' % (user, current))
+    user.userprovisionhistory_set.filter(end__isnull=True, start=start_date).update(end=current)
 
 
 class Command(BaseCommand):
