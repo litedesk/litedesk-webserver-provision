@@ -25,7 +25,6 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 
 from accounting.models import Contract, Charge
-from provisioning.models import UserProvisionHistory
 from tenants.models import User
 
 
@@ -48,12 +47,27 @@ class Command(BaseCommand):
 
     option_list = BaseCommand.option_list + (
         make_option('-s', '--start', dest='start_date', default=None, help='start date'),
-        make_option('-e', '--end', dest='end_date', default=None, help='end date')
+        make_option('-e', '--end', dest='end_date', default=None, help='end date'),
+        make_option('-u', '--user', dest='user', default=None, help='username')
     )
 
-    def find_charges(self, item, user, start, end):
-        current = start
-        while current < end:
+    def find_charges(self, provision, start, end):
+        item = provision.item
+        user = provision.user
+
+        # we want to find all charges that one provision action incurs
+        # between the period of start and end.
+
+        # We start by finding the earliest point that dates to be looked at.
+        begin_interval = max(provision.start.date(), start)
+        end_interval = end if provision.end is None else min(provision.end.date(), end)
+
+        current = begin_interval
+
+        # For each month in the begin_interval/end_interval period, we
+        # find the contract and record the charge
+
+        while current < end_interval:
             begin_date = beginning_of_period(current)
             end_date = end_of_period(current)
             contract = Contract.objects.valid_offer_for_item(
@@ -61,8 +75,8 @@ class Command(BaseCommand):
                 )
 
             if contract is None:
-                log.info('No contract found for %s' % user.tenant)
-                return
+                log.info('No contract for %s on %s-%s' % (user.tenant, begin_date, end_date))
+                continue
 
             offer = contract.offer.__subclassed__
             charge, created = Charge.objects.get_or_create(
@@ -84,10 +98,12 @@ class Command(BaseCommand):
     def handle(self, *fixture_labels, **opts):
         start = beginning_of_period(opts['start_date'] and parse(opts['start_date']).date())
         end = end_of_period(opts['end_date'] and parse(opts['end_date']).date())
+        username = opts.get('user')
 
-        for entry in UserProvisionHistory.objects.exclude(end__lt=start):
-            self.find_charges(entry.item, entry.user, start, end)
+        users = User.objects.all()
 
-        for user in User.objects.all():
-            for service in user.services.select_subclasses():
-                self.find_charges(service, user, start, end)
+        if username: users = users.filter(username=username)
+
+        for user in users:
+            for entry in user.userprovisionhistory_set.exclude(end__lt=start):
+                self.find_charges(entry, start, end)
