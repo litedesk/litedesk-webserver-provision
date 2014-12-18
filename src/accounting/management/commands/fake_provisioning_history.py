@@ -18,22 +18,24 @@
 import datetime
 import logging
 import random
+from optparse import make_option
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db import models
 from django.db.models.signals import post_save
+from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from factory.django import mute_signals
 
 from audit.signals import trackable_model_changed
 from accounting.factories import ContractFactory
-from accounting.models import Contract, Charge
+from accounting.models import Contract
 from catalog.factories import SubscriptionFactory
 from catalog.models import Subscription
 from provisioning.models import Asset, Software, UserProvisionHistory, Okta, AirWatch
 from tenants.factories import UserFactory
-from tenants.models import User, Tenant
+from tenants.models import Tenant
 
 
 log = logging.getLogger(__name__)
@@ -43,10 +45,9 @@ APPLE_USAGE_PCT = 30.0
 GOOGLE_USAGE_PCT = 30.0
 OFFICE_USAGE_PCT = 80.0
 SALESFORCE_USAGE_PCT = 25.0
-DAILY_HIRING_RATE = 0.5
-MONTHLY_FIRING_RATE = 2.0
+MONTHLY_FIRING_RATE = 5.0
 
-GOOGLE_PRODUCTS = ['Google', 'Chromebook']
+GOOGLE_PRODUCTS = ['Google', 'Chromebook', 'Chromebox']
 
 
 def random_event_test(probability):
@@ -119,9 +120,6 @@ def make_provision_history(user, start_date, end_date):
     if random_event_test(MOBILE_USAGE_PCT):
         user.services.add(aw)
 
-    for service in user.services.select_subclasses():
-        make_provision_service(user, service, start_date)
-
     if random_event_test(SALESFORCE_USAGE_PCT):
         for software in Software.objects.filter(name__icontains='salesforce'):
             make_provision_asset(user, software, start_date)
@@ -131,6 +129,7 @@ def make_provision_history(user, start_date, end_date):
             make_provision_asset(user, software, start_date)
 
     if random_event_test(APPLE_USAGE_PCT):
+        user.services.add(aw)
         for asset in Asset.objects.filter(name__startswith='i').select_subclasses():
             make_provision_asset(user, asset, start_date)
 
@@ -138,43 +137,40 @@ def make_provision_history(user, start_date, end_date):
         for asset in Asset.objects.filter(name__in=GOOGLE_PRODUCTS).select_subclasses():
             make_provision_asset(user, asset, start_date)
 
+    for service in user.services.select_subclasses():
+        make_provision_service(user, service, start_date)
+
     current = start_date
     while current < end_date:
         current += relativedelta(months=1)
         if random_event_test(MONTHLY_FIRING_RATE):
             log.info('Dismissing fake user %s on %s' % (user, current))
-            user.userprovisionhistory_set.exclude(end__isnull=True).filter(
-                start=start_date
-                ).update(end=current)
+            user.userprovisionhistory_set.filter(
+                end__isnull=True, start=start_date).update(end=current)
             break
 
 
 class Command(BaseCommand):
     help = ''
 
+    option_list = BaseCommand.option_list + (
+        make_option('-n', '--users', dest='users', default=10, help='# users to create'),
+        make_option('-s', '--start', dest='start_date', default=None, help='start date'),
+        make_option('-e', '--end', dest='end_date', default=None, help='end date')
+    )
+
     def handle(self, *fixture_labels, **opts):
         today = datetime.date.today()
         year_ago = today - relativedelta(years=1)
         year_from_now = today + relativedelta(years=1)
 
-        start_date = Contract.beginning_of_period(year_ago)
-        end_date = Contract.end_of_period(year_from_now)
+        start_date = Contract.beginning_of_period(
+            opts['start_date'] and parse(opts['start_date']).date() or year_ago
+            )
+        end_date = Contract.end_of_period(
+            opts['end_date'] and parse(opts['end_date']).date() or year_from_now
+            )
 
         for tenant in Tenant.objects.all():
-            for service in tenant.tenantservice_set.select_subclasses():
-                make_contract(make_offer(service), tenant, start_date, end_date)
-
-            for asset in Asset.objects.filter(tenantasset__tenant=tenant).select_subclasses():
-                log.info('Checking/Creating contracts for %s' % asset)
-                make_contract(make_offer(asset), tenant, start_date, end_date)
-
-            current = start_date
-            # Create a tenant with a few employees from the start.
-            for _ in xrange(random.randint(10, 200)):
-                make_user(tenant, current, end_date)
-
-            # Every day until end_date, there is a chance of hiring someone else.
-            while current < end_date:
-                current += relativedelta(days=1)
-                if random_event_test(DAILY_HIRING_RATE):
-                    make_user(tenant, current, end_date)
+            for _ in xrange(int(opts['users'])):
+                make_user(tenant, start_date, end_date)
