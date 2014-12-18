@@ -106,3 +106,4 @@ class UserFactory(factory.DjangoModelFactory):
     username = factory.LazyAttribute(make_username)
     first_name = factory.LazyAttribute(make_first_name)
     last_name = factory.LazyAttribute(make_last_name)
+    display_name = factory.LazyAttribute(lambda obj: ' '.join([obj.first_name, obj.last_name]))
