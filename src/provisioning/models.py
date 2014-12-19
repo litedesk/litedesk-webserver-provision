@@ -415,19 +415,11 @@ class AirWatch(TenantService, Provisionable):
     group_id = models.CharField(max_length=80)
 
     @property
-    def portal_url(self):
-        url = self.server_url
-        if url.endswith('/'):
-            url = url[:-1]
-        return url
-
-    @property
-    def api_server_domain(self):
+    def portal_domain(self):
         portal_domain = urlparse(self.server_url).netloc
-        components = portal_domain.split('.')
-        if components[0] == 'as':
-            components[0] = 'ds'
-        return '.'.join(components)
+        if portal_domain.startswith('as'):
+            portal_domain = portal_domain.replace('as', 'ds', 1)
+        return portal_domain
 
     def get_client(self):
         return airwatch.client.Client(
@@ -458,7 +450,7 @@ class AirWatch(TenantService, Provisionable):
 
     @property
     def qrcode(self):
-        server_domain = self.api_server_domain
+        server_domain = self.portal_domain
         image_dir = os.path.join(self.QRCODE_ROOT_DIR, server_domain)
         image_file_name = '{0}.png'.format(self.group_id)
         image_file_path = os.path.join(image_dir, image_file_name)

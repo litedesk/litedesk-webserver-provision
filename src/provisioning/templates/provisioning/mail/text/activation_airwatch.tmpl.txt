@@ -4,7 +4,7 @@ your organization is using AirWatch to manage your mobile devices. Your account 
 
 Please use the following credentials to authenticate:
 
-Server URL: {{ service.server_url }}
+Server URL: {{ service.portal_domain }}
 Group ID: {{ service.group_id }}
 Username: {{ user.username }}
 Password: Use Okta password
