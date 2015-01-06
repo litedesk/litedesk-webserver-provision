@@ -245,6 +245,9 @@ class UserProvisionSerializer(serializers.ModelSerializer):
         fields = ('platforms', 'software', 'devices', 'simcards')
 
 
+class UserSummaryFastSerializer(serializers): pass
+
+
 class UserSummarySerializer(serializers.ModelSerializer):
     devices = serializers.SerializerMethodField('get_user_devices')
     software = serializers.SerializerMethodField('get_user_software')

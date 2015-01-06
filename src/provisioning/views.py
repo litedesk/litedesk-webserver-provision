@@ -111,7 +111,37 @@ class UserProvisionStatusListView(generics.ListAPIView):
     serializer_class = serializers.UserSummarySerializer
 
     def get_queryset(self, *args, **kw):
-        return self.request.user.tenant.user_set.all()
+        query = '''
+        SELECT
+            person.id,
+            person.display_name,
+            person.email,
+            ARRAY(
+                SELECT tenantservice_id
+                FROM tenants_user_services
+                WHERE user_id = person.id
+            ) AS services,
+            ARRAY(
+                SELECT DISTINCT asset.name
+                FROM provisioning_asset as asset, provisioning_userprovisionable as software
+                WHERE asset.id = software.object_id AND software.user_id = person.id
+            ) as software,
+            ARRAY(
+                SELECT entry.serial_number
+                FROM provisioning_inventoryentry as entry
+                JOIN (
+                    SELECT MAX(created) as created, serial_number
+                    FROM provisioning_inventoryentry
+                    GROUP BY serial_number
+                ) as subq
+                ON (entry.created = subq.created AND entry.serial_number = subq.serial_number)
+                WHERE entry.user_id = person.id AND entry.status = 'handed_out'
+            ) as devices
+        FROM tenants_user AS person
+        WHERE person.tenant_id = %s;
+        '''
+        return User.objects.raw(query, params=[self.request.user.tenant.pk])
+        #return self.request.user.tenant.user_set.all()
 
 
 class AvailableDeviceListView(APIView):
@@ -167,17 +197,15 @@ class LatestUserInventoryEntryListView(UserInventoryEntryListView):
             JOIN (
               SELECT max(created) as created, serial_number
               FROM {0}
-              WHERE user_id = {1}
+              WHERE user_id = %s
               GROUP BY serial_number
             ) as subq
             ON (
               entry.created = subq.created
               AND entry.serial_number = subq.serial_number
             )
-        """.format(
-            InventoryEntry._meta.db_table,
-            self.kwargs.get('pk')
-        )
-        return InventoryEntry.objects.raw(sql)
+        """.format(InventoryEntry._meta.db_table)
+
+        return InventoryEntry.objects.raw(sql, params=[self.kwargs.get('pk')])
         # return qs.filter(tenant_asset__tenant=self.request.user.tenant,
         #                user__id=self.kwargs.get('pk'))
