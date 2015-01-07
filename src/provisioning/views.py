@@ -109,11 +109,12 @@ class UserProvisionView(generics.RetrieveUpdateAPIView):
     model = User
 
 
-class UserProvisionStatusListView(generics.ListAPIView):
+class UserProvisionStatusListView(APIView):
     permission_classes = (permissions.IsTenantPrimaryContact, )
     #serializer_class = serializers.UserSummarySerializer
 
-    def get_queryset(self, *args, **kw):
+    #def get_queryset(self, *args, **kw):
+    def get(self, request, format=None):
         query = '''
         SELECT
             person.id,
@@ -146,10 +147,10 @@ class UserProvisionStatusListView(generics.ListAPIView):
         cursor = connection.cursor()
         cursor.execute(query, [self.request.user.tenant.pk])
         column_names = [col[0] for col in cursor.description]
-        return JSONRenderer([
+        return Response(JSONRenderer([
             dict(izip(column_names, row))
             for row in cursor.fetchall()
-        ])
+        ]))
         #return self.request.user.tenant.user_set.all()
 
 
