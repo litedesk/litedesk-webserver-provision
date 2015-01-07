@@ -15,12 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from itertools import izip
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
 from rest_framework import generics
 from rest_framework import permissions as rest_permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer
 
 
 from tenants import permissions
@@ -108,7 +111,7 @@ class UserProvisionView(generics.RetrieveUpdateAPIView):
 
 class UserProvisionStatusListView(generics.ListAPIView):
     permission_classes = (permissions.IsTenantPrimaryContact, )
-    serializer_class = serializers.UserSummarySerializer
+    #serializer_class = serializers.UserSummarySerializer
 
     def get_queryset(self, *args, **kw):
         query = '''
@@ -140,7 +143,13 @@ class UserProvisionStatusListView(generics.ListAPIView):
         FROM tenants_user AS person
         WHERE person.tenant_id = %s;
         '''
-        return User.objects.raw(query, params=[self.request.user.tenant.pk])
+        cursor = connection.cursor()
+        cursor.execute(query, [self.request.user.tenant.pk])
+        column_names = [col[0] for col in cursor.description]
+        return JSONRenderer([
+            dict(izip(column_names, row))
+            for row in cursor.fetchall()
+        ])
         #return self.request.user.tenant.user_set.all()
 
 
