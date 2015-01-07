@@ -147,7 +147,7 @@ class UserProvisionStatusListView(APIView):
         cursor = connection.cursor()
         cursor.execute(query, [self.request.user.tenant.pk])
         column_names = [col[0] for col in cursor.description]
-        return Response(JSONRenderer([
+        return Response(JSONRenderer().render([
             dict(izip(column_names, row))
             for row in cursor.fetchall()
         ]))
