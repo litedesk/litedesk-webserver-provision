@@ -148,12 +148,17 @@ class UserProvisionStatusListView(APIView):
         cursor = connection.cursor()
         cursor.execute(query, [request.user.tenant.pk])
         column_names = [col[0] for col in cursor.description]
-        return Response(data={
-            'results': [
-                dict(izip(column_names, row))
-                for row in cursor.fetchall()
-            ]
-        })
+        results = [
+            dict(izip(column_names, row))
+            for row in cursor.fetchall()
+        ]
+        for result in results:
+            result['services'] = {
+                'web': 1 in result['services'],
+                'mobile': 2 in result['services'],
+                'windows': 3 in result['services']
+            }
+        return Response(data={'results': results})
         #return self.request.user.tenant.user_set.all()
 
 
