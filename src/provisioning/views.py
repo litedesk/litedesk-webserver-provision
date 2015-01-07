@@ -125,7 +125,7 @@ class UserProvisionStatusListView(APIView):
                 SELECT tenantservice_id
                 FROM tenants_user_services
                 WHERE user_id = person.id
-            ) AS services,
+            ) AS platforms,
             ARRAY(
                 SELECT DISTINCT asset.name
                 FROM provisioning_asset as asset, provisioning_userprovisionable as software
@@ -153,10 +153,10 @@ class UserProvisionStatusListView(APIView):
             for row in cursor.fetchall()
         ]
         for result in results:
-            result['services'] = {
-                'web': 1 in result['services'],
-                'mobile': 2 in result['services'],
-                'windows': 3 in result['services']
+            result['platforms'] = {
+                'web': 1 in result['platforms'],
+                'mobile': 2 in result['platforms'],
+                'windows': 3 in result['platforms']
             }
         return Response(data={'results': results})
         #return self.request.user.tenant.user_set.all()
