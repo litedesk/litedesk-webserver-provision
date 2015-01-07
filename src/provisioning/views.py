@@ -16,6 +16,7 @@
 # limitations under the License.
 
 from itertools import izip
+from json import JSONEncoder
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
@@ -145,9 +146,9 @@ class UserProvisionStatusListView(APIView):
         WHERE person.tenant_id = %s;
         '''
         cursor = connection.cursor()
-        cursor.execute(query, [self.request.user.tenant.pk])
+        cursor.execute(query, [request.user.tenant.pk])
         column_names = [col[0] for col in cursor.description]
-        return Response(JSONRenderer().render([
+        return Response(data=JSONEncoder().encode([
             dict(izip(column_names, row))
             for row in cursor.fetchall()
         ]))
