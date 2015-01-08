@@ -158,6 +158,10 @@ class UserProvisionStatusListView(APIView):
                 'mobile': 2 in result['platforms'],
                 'windows': 3 in result['platforms']
             }
+            result['software'] = [
+                {'name': name}
+                for name in result['software']
+            ]
         return Response(data={'results': results})
         #return self.request.user.tenant.user_set.all()
 
