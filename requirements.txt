@@ -1,5 +1,5 @@
 django
-djangorestframework<3.0
+djangorestframework>=3.9.1
 django-autoslug
 django-celery
 django-compressor
